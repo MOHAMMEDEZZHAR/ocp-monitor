@@ -1,0 +1,101 @@
+"use client"
+
+import { useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
+import { loadThresholds } from "@/utils/storage"
+import { defaultThresholds } from "@/config/thresholds"
+
+interface GraphsSectionProps {
+  historicalData: any[]
+}
+
+export function GraphsSection({ historicalData }: GraphsSectionProps) {
+  const [activeTag, setActiveTag] = useState("Tag_1001")
+
+  // Process data for the selected tag
+  const chartData = historicalData.map((item) => {
+    const tagData = item.donnees.find((d: any) => d.tag === activeTag)
+    return {
+      timestamp: new Date(item.timestamp).toLocaleTimeString(),
+      value: tagData?.valeur || 0,
+    }
+  })
+
+  // Get tag descriptions from thresholds
+  const thresholdsList = loadThresholds() || defaultThresholds
+  const tagDescriptions: Record<string, { label: string; unit: string }> = {}
+
+  thresholdsList.forEach((item) => {
+    tagDescriptions[item.tag] = {
+      label: item.label,
+      unit: item.unit,
+    }
+  })
+
+  return (
+    <Card className="h-full bg-white text-black">
+      <CardHeader className="pb-2">
+        <CardTitle>Historical Trends</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Tabs defaultValue="Tag_1001" onValueChange={setActiveTag}>
+          <TabsList className="grid grid-cols-4 md:grid-cols-7 mb-4 bg-gray-100">
+            {Object.keys(tagDescriptions).map((tag) => (
+              <TabsTrigger
+                key={tag}
+                value={tag}
+                className="text-xs data-[state=active]:bg-white data-[state=active]:text-black"
+              >
+                {tagDescriptions[tag].label.split(" ")[0]}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          {Object.keys(tagDescriptions).map((tag) => (
+            <TabsContent key={tag} value={tag} className="h-[400px]">
+              <ChartContainer
+                config={{
+                  value: {
+                    label: tagDescriptions[tag].label,
+                    color: "hsl(var(--chart-1))",
+                  },
+                }}
+              >
+                <LineChart data={chartData} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis
+                    dataKey="timestamp"
+                    tickMargin={10}
+                    tickFormatter={(value) => value.split(":").slice(0, 2).join(":")}
+                    stroke="#333"
+                  />
+                  <YAxis
+                    label={{
+                      value: tagDescriptions[tag].unit,
+                      angle: -90,
+                      position: "insideLeft",
+                      style: { textAnchor: "middle", fill: "#333" },
+                    }}
+                    stroke="#333"
+                  />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Line
+                    type="monotone"
+                    dataKey="value"
+                    stroke="var(--color-value)"
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 6 }}
+                  />
+                </LineChart>
+              </ChartContainer>
+            </TabsContent>
+          ))}
+        </Tabs>
+      </CardContent>
+    </Card>
+  )
+}
