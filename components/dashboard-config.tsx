@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Save, X, Layout, Eye, EyeOff, Columns, Rows, Grip, AlertCircle, CheckCircle } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
+import { saveDashboardConfig, loadDashboardConfig } from "@/utils/storage"
 
 interface DashboardConfigProps {
   onConfigChange: (config: DashboardConfig) => void
@@ -46,11 +47,12 @@ interface Notification {
   message: string
 }
 
-const DASHBOARD_CONFIG_KEY = "dashboard-config"
-
 export function DashboardConfig({ onConfigChange, onEditModeChange }: DashboardConfigProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const [config, setConfig] = useState<DashboardConfig>(defaultConfig)
+  const [config, setConfig] = useState<DashboardConfig>(() => {
+    const savedConfig = loadDashboardConfig()
+    return savedConfig || defaultConfig
+  })
   const [activeTab, setActiveTab] = useState("visibility")
   // État pour les notifications
   const [notification, setNotification] = useState<Notification | null>(null)
@@ -58,15 +60,14 @@ export function DashboardConfig({ onConfigChange, onEditModeChange }: DashboardC
   // Load config from localStorage on component mount
   useEffect(() => {
     try {
-      const savedConfig = localStorage.getItem(DASHBOARD_CONFIG_KEY)
+      const savedConfig = loadDashboardConfig()
       if (savedConfig) {
-        const parsedConfig = JSON.parse(savedConfig)
-        setConfig(parsedConfig)
-        onConfigChange(parsedConfig)
+        setConfig(savedConfig)
+        onConfigChange(savedConfig)
 
         // Apply edit mode if it was saved
-        if (parsedConfig.editMode) {
-          onEditModeChange(parsedConfig.editMode)
+        if (savedConfig.editMode) {
+          onEditModeChange(savedConfig.editMode)
         }
       }
     } catch (error) {
@@ -76,7 +77,7 @@ export function DashboardConfig({ onConfigChange, onEditModeChange }: DashboardC
 
   const handleSave = () => {
     try {
-      localStorage.setItem(DASHBOARD_CONFIG_KEY, JSON.stringify(config))
+      saveDashboardConfig(config)
       onConfigChange(config)
       onEditModeChange(config.editMode)
 
@@ -337,7 +338,7 @@ export function DashboardConfig({ onConfigChange, onEditModeChange }: DashboardC
                       <Input
                         type="number"
                         min="1"
-                        max="6"
+                        max="7"
                         value={config.gaugeColumns}
                         onChange={(e) => handleChange("gaugeColumns", Number.parseInt(e.target.value) || 1)}
                         className="w-16 text-center"
@@ -345,7 +346,7 @@ export function DashboardConfig({ onConfigChange, onEditModeChange }: DashboardC
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleChange("gaugeColumns", Math.min(6, config.gaugeColumns + 1))}
+                        onClick={() => handleChange("gaugeColumns", Math.min(7, config.gaugeColumns + 1))}
                       >
                         +
                       </Button>

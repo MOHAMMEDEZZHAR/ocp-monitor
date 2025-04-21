@@ -8,14 +8,31 @@ import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts"
 import { loadThresholds } from "@/utils/storage"
 import { defaultThresholds } from "@/config/thresholds"
 
+// Interfaces pour le typage
+interface Threshold {
+  tag: string
+  label: string
+  unit: string
+}
+
+interface TagData {
+  tag: string
+  valeur: number
+}
+
+interface HistoricalDataItem {
+  timestamp: string | Date
+  donnees?: TagData[]
+}
+
 interface GraphsSectionProps {
-  historicalData: any[]
+  historicalData: HistoricalDataItem[]
   isDarkMode: boolean
 }
 
 export function GraphsSection({ historicalData, isDarkMode }: GraphsSectionProps) {
-  const [activeTag, setActiveTag] = useState("Tag_1001")
-  const [thresholdsList, setThresholdsList] = useState(defaultThresholds)
+  const [activeTag, setActiveTag] = useState<string>("Tag_1001")
+  const [thresholdsList, setThresholdsList] = useState<Threshold[]>(defaultThresholds)
 
   // Charger les seuils dans un useEffect
   useEffect(() => {
@@ -25,7 +42,7 @@ export function GraphsSection({ historicalData, isDarkMode }: GraphsSectionProps
 
   // Traiter les données pour le tag sélectionné
   const chartData = historicalData.map((item) => {
-    const tagData = item.donnees?.find((d: any) => d.tag === activeTag)
+    const tagData = item.donnees?.find((d) => d.tag === activeTag)
     return {
       timestamp: new Date(item.timestamp).toLocaleTimeString(),
       value: tagData?.valeur || 0,
@@ -75,7 +92,7 @@ export function GraphsSection({ historicalData, isDarkMode }: GraphsSectionProps
                   <XAxis
                     dataKey="timestamp"
                     tickMargin={10}
-                    tickFormatter={(value) => value.split(":").slice(0, 2).join(":")}
+                    tickFormatter={(value: string) => value.split(":").slice(0, 2).join(":")}
                     stroke={isDarkMode ? "#aaa" : "#333"}
                   />
                   <YAxis

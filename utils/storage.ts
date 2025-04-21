@@ -1,8 +1,31 @@
 const THRESHOLD_KEY = "custom_thresholds"
 const DARK_MODE_KEY = "dark_mode"
 const LANGUAGE_KEY = "language"
+const DASHBOARD_CONFIG_KEY = "dashboard-config"
 
 const isBrowser = typeof window !== "undefined"
+
+// Interface pour les seuils
+interface Threshold {
+  tag: string
+  label: string
+  unit: string
+  min: number
+  max: number
+}
+
+// Interface pour dashboardConfig (basée sur DashboardConfigType dans dashboard.tsx)
+interface DashboardConfig {
+  showGauges: boolean
+  showGraphs: boolean
+  showAlerts: boolean
+  showSummary: boolean
+  layout: "default" | "compact" | "expanded"
+  gaugeColumns: number
+  graphsPosition: "left" | "right" | "full"
+  editMode: boolean
+  componentOrder: string[]
+}
 
 // Save alerts to localStorage
 export const saveAlerts = (alerts: any[]) => {
@@ -94,7 +117,7 @@ export const loadSettings = (): any => {
 }
 
 // Save thresholds
-export const saveThresholds = (thresholds: any[]) => {
+export const saveThresholds = (thresholds: Threshold[]) => {
   if (!isBrowser) return
   try {
     localStorage.setItem(THRESHOLD_KEY, JSON.stringify(thresholds))
@@ -104,14 +127,14 @@ export const saveThresholds = (thresholds: any[]) => {
 }
 
 // Load thresholds
-export const loadThresholds = () => {
-  if (!isBrowser) return null
+export const loadThresholds = (): Threshold[] => {
+  if (!isBrowser) return []
   try {
     const savedThresholds = localStorage.getItem(THRESHOLD_KEY)
-    return savedThresholds ? JSON.parse(savedThresholds) : null
+    return savedThresholds ? JSON.parse(savedThresholds) : []
   } catch (error) {
     console.error("Error loading thresholds from localStorage:", error)
-    return null
+    return []
   }
 }
 
@@ -126,7 +149,7 @@ export const saveDarkMode = (isDarkMode: boolean) => {
 }
 
 // Load dark mode
-export const loadDarkMode = () => {
+export const loadDarkMode = (): boolean => {
   if (!isBrowser) return false
   try {
     const savedMode = localStorage.getItem(DARK_MODE_KEY)
@@ -148,12 +171,34 @@ export const saveLanguage = (language: string) => {
 }
 
 // Load language
-export const loadLanguage = () => {
+export const loadLanguage = (): string => {
   if (!isBrowser) return "en"
   try {
     return localStorage.getItem(LANGUAGE_KEY) || "en"
   } catch (error) {
     console.error("Error loading language from localStorage:", error)
     return "en"
+  }
+}
+
+// Save dashboard config
+export const saveDashboardConfig = (config: DashboardConfig) => {
+  if (!isBrowser) return
+  try {
+    localStorage.setItem(DASHBOARD_CONFIG_KEY, JSON.stringify(config))
+  } catch (error) {
+    console.error("Error saving dashboard config to localStorage:", error)
+  }
+}
+
+// Load dashboard config
+export const loadDashboardConfig = (): DashboardConfig | null => {
+  if (!isBrowser) return null
+  try {
+    const savedConfig = localStorage.getItem(DASHBOARD_CONFIG_KEY)
+    return savedConfig ? JSON.parse(savedConfig) : null
+  } catch (error) {
+    console.error("Error loading dashboard config from localStorage:", error)
+    return null
   }
 }

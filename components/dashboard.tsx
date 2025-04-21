@@ -16,6 +16,8 @@ import {
   loadDarkMode,
   loadLanguage,
   saveLanguage,
+  loadDashboardConfig,
+  saveDashboardConfig,
 } from "@/utils/storage"
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -35,9 +37,9 @@ export function Dashboard() {
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
   const [language, setLanguage] = useState("en")
-  const [thresholdsList, setThresholdsList] = useState(defaultThresholds) // Ajouter un état pour thresholdsList
+  const [thresholdsList, setThresholdsList] = useState(defaultThresholds)
 
-  const [dashboardConfig, setDashboardConfig] = useState<DashboardConfigType>({
+  const defaultDashboardConfig: DashboardConfigType = {
     showGauges: true,
     showGraphs: true,
     showAlerts: true,
@@ -47,17 +49,35 @@ export function Dashboard() {
     graphsPosition: "left",
     editMode: false,
     componentOrder: ["gauges", "graphs", "alerts", "summary"],
-  })
+  }
+
+  // Initialiser avec la valeur par défaut pour éviter l'erreur d'hydratation
+  const [dashboardConfig, setDashboardConfig] = useState<DashboardConfigType>(defaultDashboardConfig)
+
+  // État séparé pour gaugeColumns, initialisé après le montage
+  const [gaugeColumns, setGaugeColumns] = useState<number>(defaultDashboardConfig.gaugeColumns)
+
+  // Charger la configuration depuis localStorage uniquement côté client
+  useEffect(() => {
+    const savedConfig = loadDashboardConfig()
+    if (savedConfig) {
+      setDashboardConfig(savedConfig)
+      setGaugeColumns(savedConfig.gaugeColumns)
+    }
+  }, [])
 
   const { historicalData: serverHistoricalData, isLoading: isHistoryLoading } = useHistory()
 
-  // Charger les seuils dans un useEffect
+  useEffect(() => {
+    console.log("Current dashboardConfig:", dashboardConfig)
+    setGaugeColumns(dashboardConfig.gaugeColumns)
+  }, [dashboardConfig])
+
   useEffect(() => {
     const thresholds = loadThresholds() || defaultThresholds
     setThresholdsList(thresholds)
   }, [])
 
-  // Charger l'historique des alertes, le mode sombre et la langue au montage
   useEffect(() => {
     const history = loadAlertHistory()
     setAlertHistory(history)
@@ -74,7 +94,6 @@ export function Dashboard() {
     setLanguage(savedLanguage)
   }, [])
 
-  // Basculer le mode sombre
   const toggleDarkMode = () => {
     const newMode = !isDarkMode
     setIsDarkMode(newMode)
@@ -87,12 +106,10 @@ export function Dashboard() {
     }
   }
 
-  // Définir la langue
   useEffect(() => {
     saveLanguage(language)
   }, [language])
 
-  // Basculer la visibilité des composants en mode édition
   const toggleComponentVisibility = (
     component: keyof Pick<DashboardConfigType, "showGauges" | "showGraphs" | "showAlerts" | "showSummary">,
   ) => {
@@ -103,13 +120,11 @@ export function Dashboard() {
         ...prev,
         [component]: !prev[component],
       }
-
-      localStorage.setItem("dashboard-config", JSON.stringify(newConfig))
+      saveDashboardConfig(newConfig)
       return newConfig
     })
   }
 
-  // Traiter les données lorsqu'elles arrivent
   useEffect(() => {
     if (!data) return
 
@@ -175,9 +190,8 @@ export function Dashboard() {
         console.error("Error saving alert history:", error)
       }
     }
-  }, [data, serverHistoricalData, thresholdsList]) // Ajouter thresholdsList comme dépendance
+  }, [data, serverHistoricalData, thresholdsList])
 
-  // Créer les descriptions des tags à partir des seuils
   const tagDescriptions: Record<string, { label: string; unit: string; min: number; max: number }> = {}
   thresholdsList.forEach((item: { tag: string | number; label: any; unit: any; min: any; max: any }) => {
     tagDescriptions[item.tag] = {
@@ -188,7 +202,6 @@ export function Dashboard() {
     }
   })
 
-  // Rendre les composants en fonction de l'ordre
   const renderComponent = (componentId: string, index: number) => {
     switch (componentId) {
       case "gauges":
@@ -206,13 +219,16 @@ export function Dashboard() {
                 </Button>
               )}
               <div
-                className={`grid grid-cols-1 ${
-                  dashboardConfig.layout === "compact"
-                    ? `md:grid-cols-${Math.min(dashboardConfig.gaugeColumns, 3)} lg:grid-cols-${dashboardConfig.gaugeColumns}`
-                    : dashboardConfig.layout === "expanded"
-                      ? `md:grid-cols-${Math.min(dashboardConfig.gaugeColumns - 1, 2)} lg:grid-cols-${Math.min(dashboardConfig.gaugeColumns, 3)}`
-                      : `md:grid-cols-${Math.min(dashboardConfig.gaugeColumns - 2, 2)} lg:grid-cols-${Math.min(dashboardConfig.gaugeColumns, 4)}`
-                } gap-4`}
+                className={`
+                  grid gap-4
+                  ${gaugeColumns === 1 ? "grid-cols-1" : ""}
+                  ${gaugeColumns === 2 ? "grid-cols-2" : ""}
+                  ${gaugeColumns === 3 ? "grid-cols-3" : ""}
+                  ${gaugeColumns === 4 ? "grid-cols-4" : ""}
+                  ${gaugeColumns === 5 ? "grid-cols-5" : ""}
+                  ${gaugeColumns === 6 ? "grid-cols-6" : ""}
+                  ${gaugeColumns === 7 ? "grid-cols-7" : ""}
+                `}
               >
                 {data?.donnees?.map((item: any) => (
                   <GaugeCard
