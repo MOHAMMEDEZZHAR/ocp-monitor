@@ -16,13 +16,75 @@ interface Notification {
   message: string
 }
 
-export function SettingsPanel() {
+interface SettingsPanelProps {
+  language?: string
+}
+
+export function SettingsPanel({ language = "en" }: SettingsPanelProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [thresholds, setThresholds] = useState<TagThreshold[]>(defaultThresholds)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
 
   // État pour les notifications
   const [notification, setNotification] = useState<Notification | null>(null)
+
+  // Traductions
+  const translations = {
+    title: {
+      en: "Alert Threshold Settings",
+      fr: "Paramètres des Seuils d'Alerte",
+      es: "Configuración de Umbrales de Alerta",
+      de: "Alarmschwellenwert-Einstellungen",
+    },
+    validationError: {
+      en: "Please fix the following errors:",
+      fr: "Veuillez corriger les erreurs suivantes :",
+      es: "Por favor, corrija los siguientes errores:",
+      de: "Bitte beheben Sie die folgenden Fehler:",
+    },
+    min: {
+      en: "Min",
+      fr: "Min",
+      es: "Mín",
+      de: "Min",
+    },
+    max: {
+      en: "Max",
+      fr: "Max",
+      es: "Máx",
+      de: "Max",
+    },
+    cancel: {
+      en: "Cancel",
+      fr: "Annuler",
+      es: "Cancelar",
+      de: "Abbrechen",
+    },
+    save: {
+      en: "Save Settings",
+      fr: "Enregistrer",
+      es: "Guardar",
+      de: "Speichern",
+    },
+    successSave: {
+      en: "Threshold settings saved successfully.",
+      fr: "Paramètres des seuils enregistrés avec succès.",
+      es: "Configuración de umbrales guardada con éxito.",
+      de: "Schwellenwerteinstellungen erfolgreich gespeichert.",
+    },
+    successWs: {
+      en: "Thresholds sent to server successfully.",
+      fr: "Seuils envoyés au serveur avec succès.",
+      es: "Umbrales enviados al servidor con éxito.",
+      de: "Schwellenwerte erfolgreich an den Server gesendet.",
+    },
+    errorWs: {
+      en: "Unable to send thresholds to server.",
+      fr: "Impossible d'envoyer les seuils au serveur.",
+      es: "No se pueden enviar umbrales al servidor.",
+      de: "Schwellenwerte können nicht an den Server gesendet werden.",
+    },
+  }
 
   // Load settings and thresholds from localStorage on component mount
   useEffect(() => {
@@ -41,8 +103,8 @@ export function SettingsPanel() {
   const sendThresholdsViaWebSocket = (thresholds: TagThreshold[]) => {
     return new Promise<void>((resolve, reject) => {
       try {
-        console.log("Initializing WebSocket connection to ws://localhost:1880/ws/change")
-        const ws = new WebSocket("ws://localhost:1880/ws/change")
+        console.log("Initializing WebSocket connection to ws://localhost:1880/ws/historique")
+        const ws = new WebSocket("ws://localhost:1880/ws/historique")
 
         // Définir un timeout pour la connexion
         const connectionTimeout = setTimeout(() => {
@@ -138,7 +200,7 @@ export function SettingsPanel() {
     // Afficher notification de succès pour la sauvegarde locale
     setNotification({
       type: "success",
-      message: "Threshold settings saved successfully.",
+      message: translations.successSave[language as keyof typeof translations.successSave],
     })
 
     // Send thresholds to Node-RED via WebSocket
@@ -146,14 +208,13 @@ export function SettingsPanel() {
       await sendThresholdsViaWebSocket(thresholds)
       setNotification({
         type: "success",
-        message: "Seuils envoyés au serveur avec succès.",
+        message: translations.successWs[language as keyof typeof translations.successWs],
       })
     } catch (error) {
       console.error("Failed to send thresholds via WebSocket:", error)
       setNotification({
         type: "error",
-        message:
-          error instanceof Error ? `Erreur d'envoi: ${error.message}` : "Impossible d'envoyer les seuils au serveur.",
+        message: translations.errorWs[language as keyof typeof translations.errorWs],
       })
     }
 
@@ -233,7 +294,7 @@ export function SettingsPanel() {
       <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <Card className="w-full max-w-2xl">
           <CardHeader>
-            <CardTitle>Alert Threshold Settings</CardTitle>
+            <CardTitle>{translations.title[language as keyof typeof translations.title]}</CardTitle>
           </CardHeader>
           <CardContent className="max-h-[70vh] overflow-y-auto">
             <div className="space-y-4">
@@ -241,7 +302,7 @@ export function SettingsPanel() {
                 <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 p-3 rounded-md mb-4">
                   <div className="flex items-center gap-2 text-red-600 dark:text-red-400 font-medium">
                     <AlertTriangle className="h-4 w-4" />
-                    <span>Please fix the following errors:</span>
+                    <span>{translations.validationError[language as keyof typeof translations.validationError]}</span>
                   </div>
                   <ul className="mt-2 text-sm text-red-600 dark:text-red-400 pl-6 list-disc">
                     {Object.values(validationErrors).map((error, index) => (
@@ -265,7 +326,7 @@ export function SettingsPanel() {
                   </div>
                   <div className="col-span-3">
                     <Label htmlFor={`${threshold.tag}-min`} className="text-xs text-muted-foreground">
-                      Min ({threshold.unit})
+                      {translations.min[language as keyof typeof translations.min]} ({threshold.unit})
                     </Label>
                     <Input
                       id={`${threshold.tag}-min`}
@@ -277,7 +338,7 @@ export function SettingsPanel() {
                   </div>
                   <div className="col-span-3">
                     <Label htmlFor={`${threshold.tag}-max`} className="text-xs text-muted-foreground">
-                      Max ({threshold.unit})
+                      {translations.max[language as keyof typeof translations.max]} ({threshold.unit})
                     </Label>
                     <Input
                       id={`${threshold.tag}-max`}
@@ -295,11 +356,11 @@ export function SettingsPanel() {
           <CardFooter className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setIsOpen(false)}>
               <X className="h-4 w-4 mr-2" />
-              Cancel
+              {translations.cancel[language as keyof typeof translations.cancel]}
             </Button>
             <Button onClick={handleSave}>
               <Save className="h-4 w-4 mr-2" />
-              Save Settings
+              {translations.save[language as keyof typeof translations.save]}
             </Button>
           </CardFooter>
         </Card>

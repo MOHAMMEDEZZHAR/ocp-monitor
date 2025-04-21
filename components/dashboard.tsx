@@ -9,7 +9,14 @@ import { GraphsSection } from "@/components/graphs-section"
 import { SettingsPanel } from "@/components/settings-panel"
 import { AlertHistory } from "@/components/alert-history"
 import { checkThresholds } from "@/utils/alerts"
-import { loadAlertHistory, loadThresholds, saveDarkMode, loadDarkMode } from "@/utils/storage"
+import {
+  loadAlertHistory,
+  loadThresholds,
+  saveDarkMode,
+  loadDarkMode,
+  loadLanguage,
+  saveLanguage,
+} from "@/utils/storage"
 import { Card } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { defaultThresholds } from "@/config/thresholds"
@@ -30,6 +37,7 @@ export function Dashboard() {
   const previousAlertsRef = useRef<Record<string, boolean>>({})
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
+  const [language, setLanguage] = useState("en")
 
   // Add dashboardConfig state
   const [dashboardConfig, setDashboardConfig] = useState<DashboardConfigType>({
@@ -47,7 +55,7 @@ export function Dashboard() {
   // Dans le composant Dashboard, ajouter:
   const { historicalData: serverHistoricalData, isLoading: isHistoryLoading } = useHistory()
 
-  // Load alert history and dark mode on component mount
+  // Load alert history, dark mode, and language on component mount
   useEffect(() => {
     const history = loadAlertHistory()
     setAlertHistory(history)
@@ -59,6 +67,9 @@ export function Dashboard() {
     } else {
       document.documentElement.classList.remove("dark")
     }
+
+    const savedLanguage = loadLanguage()
+    setLanguage(savedLanguage)
   }, [])
 
   // Toggle dark mode
@@ -73,6 +84,11 @@ export function Dashboard() {
       document.documentElement.classList.remove("dark")
     }
   }
+
+  // Set language
+  useEffect(() => {
+    saveLanguage(language)
+  }, [language])
 
   // Toggle component visibility in edit mode
   const toggleComponentVisibility = (
@@ -97,13 +113,28 @@ export function Dashboard() {
   useEffect(() => {
     if (!data) return
 
-    // Check for alerts
-    const currentAlerts = checkThresholds(data)
+    // Check for alerts and update status
+    const updatedData = { ...data }
+    if (updatedData.donnees && Array.isArray(updatedData.donnees)) {
+      updatedData.donnees = updatedData.donnees.map((item: any) => {
+        const tagInfo = thresholdsList.find((t: { tag: any }) => t.tag === item.tag)
+        if (tagInfo) {
+          // Mettre à jour le statut en fonction des seuils
+          if (item.valeur < tagInfo.min || item.valeur > tagInfo.max) {
+            return { ...item, statut: "OFF" }
+          }
+        }
+        return item
+      })
+    }
+
+    // Check for alerts with updated data
+    const currentAlerts = checkThresholds(updatedData)
     setAlerts(currentAlerts)
 
     // Add to historical data (limited to last 50 points)
     setHistoricalData((prev) => {
-      const newData = [...prev, { timestamp: new Date(), ...data }]
+      const newData = [...prev, { timestamp: new Date(), ...updatedData }]
       return newData.slice(-50)
     })
 
@@ -116,7 +147,7 @@ export function Dashboard() {
     const newAlerts: any[] = []
     const newPreviousAlerts: Record<string, boolean> = {}
 
-    currentAlerts.forEach((alert) => {
+    currentAlerts.forEach((alert: { tag: any; valeur: number }) => {
       const alertKey = `${alert.tag}-${alert.valeur.toFixed(2)}`
       newPreviousAlerts[alertKey] = true
 
@@ -164,7 +195,7 @@ export function Dashboard() {
   const thresholdsList = loadThresholds() || defaultThresholds
   const tagDescriptions: Record<string, { label: string; unit: string; min: number; max: number }> = {}
 
-  thresholdsList.forEach((item) => {
+  thresholdsList.forEach((item: { tag: string | number; label: any; unit: any; min: any; max: any }) => {
     tagDescriptions[item.tag] = {
       label: item.label,
       unit: item.unit,
@@ -174,12 +205,12 @@ export function Dashboard() {
   })
 
   // Render components based on order
-  const renderComponent = (componentId: string) => {
+  const renderComponent = (componentId: string, index: number) => {
     switch (componentId) {
       case "gauges":
         return (
           dashboardConfig.showGauges && (
-            <div className="relative mb-8">
+            <div className="relative mb-8" key={`component-${componentId}-${index}`}>
               {isEditMode && (
                 <Button
                   variant="ghost"
@@ -216,7 +247,7 @@ export function Dashboard() {
 
       case "graphs":
         return (
-          <Tabs defaultValue="graphs" className="mb-8">
+          <Tabs defaultValue="graphs" className="mb-8" key={`component-${componentId}-${index}`}>
             <TabsList className="mb-4">
               <TabsTrigger value="graphs">Graphs & Alerts</TabsTrigger>
               <TabsTrigger value="history">Alert History</TabsTrigger>
@@ -254,7 +285,7 @@ export function Dashboard() {
                         <EyeOff className="h-4 w-4" />
                       </Button>
                     )}
-                    <GraphsSection historicalData={historicalData} />
+                    <GraphsSection historicalData={historicalData} isDarkMode={isDarkMode} />
                   </div>
                 )}
 
@@ -289,7 +320,7 @@ export function Dashboard() {
       case "summary":
         return (
           dashboardConfig.showSummary && (
-            <div className="relative mb-8">
+            <div className="relative mb-8" key={`component-${componentId}-${index}`}>
               {isEditMode && (
                 <Button
                   variant="ghost"
@@ -305,15 +336,19 @@ export function Dashboard() {
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div>
                     <p className="text-sm text-muted-foreground">Total Tags</p>
-                    <p className="text-2xl font-bold">{data?.resume?.total || 0}</p>
+                    <p className="text-2xl font-bold">{data?.donnees?.length || 0}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Valid</p>
-                    <p className="text-2xl font-bold text-green-500">{data?.resume?.valide || 0}</p>
+                    <p className="text-2xl font-bold text-green-500">
+                      {data?.donnees?.filter((item: any) => item.statut === "OK").length || 0}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Errors</p>
-                    <p className="text-2xl font-bold text-red-500">{data?.resume?.erreur || 0}</p>
+                    <p className="text-2xl font-bold text-red-500">
+                      {data?.donnees?.filter((item: any) => item.statut !== "OK").length || 0}
+                    </p>
                   </div>
                 </div>
               </Card>
@@ -328,22 +363,37 @@ export function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <Header isConnected={isConnected} lastUpdate={lastUpdate} />
+      <Header isConnected={isConnected} lastUpdate={lastUpdate} language={language} onLanguageChange={setLanguage} />
 
       <main className="container mx-auto p-4">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold">Current Values</h2>
+          <h2 className="text-2xl font-bold">
+            {language === "fr"
+              ? "Valeurs Actuelles"
+              : language === "es"
+                ? "Valores Actuales"
+                : language === "de"
+                  ? "Aktuelle Werte"
+                  : "Current Values"}
+          </h2>
           <div className="flex items-center gap-2">
             {isEditMode && (
               <div className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 text-xs px-2 py-1 rounded-md flex items-center">
                 <Eye className="h-3 w-3 mr-1" />
-                Edit Mode
+                {language === "fr"
+                  ? "Mode Édition"
+                  : language === "es"
+                    ? "Modo Edición"
+                    : language === "de"
+                      ? "Bearbeitungsmodus"
+                      : "Edit Mode"}
               </div>
             )}
             <DataExport
               alertHistory={alertHistory}
               measurementData={historicalData}
               tagDescriptions={tagDescriptions}
+              language={language}
             />
             <Button variant="outline" size="icon" onClick={toggleDarkMode} className="rounded-full">
               {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
@@ -353,13 +403,21 @@ export function Dashboard() {
 
         {isHistoryLoading && (
           <div className="text-center py-4">
-            <p>Chargement des données historiques...</p>
+            <p>
+              {language === "fr"
+                ? "Chargement des données historiques..."
+                : language === "es"
+                  ? "Cargando datos históricos..."
+                  : language === "de"
+                    ? "Historische Daten werden geladen..."
+                    : "Loading historical data..."}
+            </p>
           </div>
         )}
 
-        {dashboardConfig.componentOrder.map((componentId) => renderComponent(componentId))}
+        {dashboardConfig.componentOrder.map((componentId, index) => renderComponent(componentId, index))}
 
-        <SettingsPanel />
+        <SettingsPanel language={language} />
         <DashboardConfig onConfigChange={setDashboardConfig} onEditModeChange={setIsEditMode} />
       </main>
     </div>

@@ -7,9 +7,30 @@ interface DataExportProps {
   alertHistory: any[]
   measurementData: any[]
   tagDescriptions: Record<string, { label: string; unit: string; min: number; max: number }>
+  language?: string
 }
 
-export function DataExport({ alertHistory, measurementData, tagDescriptions }: DataExportProps) {
+export function DataExport({ alertHistory, measurementData, tagDescriptions, language = "en" }: DataExportProps) {
+  const getButtonText = (type: string) => {
+    if (type === "alerts") {
+      return language === "fr"
+        ? "Exporter Alertes"
+        : language === "es"
+          ? "Exportar Alertas"
+          : language === "de"
+            ? "Alarme Exportieren"
+            : "Export Alerts"
+    } else {
+      return language === "fr"
+        ? "Exporter Mesures"
+        : language === "es"
+          ? "Exportar Mediciones"
+          : language === "de"
+            ? "Messungen Exportieren"
+            : "Export Measurements"
+    }
+  }
+
   const exportToCSV = (dataType: string) => {
     let headers: string[] = []
     let csvRows: string[] = []
@@ -41,7 +62,7 @@ export function DataExport({ alertHistory, measurementData, tagDescriptions }: D
       measurementData.forEach((measurement) => {
         const row: string[] = [`"${format(new Date(measurement.timestamp), "yyyy-MM-dd HH:mm:ss")}"`]
         tags.forEach((tag) => {
-          const tagData = measurement.donnees.find((d: any) => d.tag === tag)
+          const tagData = measurement.donnees?.find((d: any) => d.tag === tag)
           row.push(tagData ? `"${tagData.valeur.toFixed(2)}"` : `""`)
         })
         csvRows.push(row.join(","))
@@ -61,16 +82,21 @@ export function DataExport({ alertHistory, measurementData, tagDescriptions }: D
 
   return (
     <div className="flex gap-2">
-      <Button variant="outline" size="sm" onClick={() => exportToCSV("alerts")} title="Export Alert History to CSV">
-        Export Alerts
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => exportToCSV("alerts")}
+        title={language === "fr" ? "Exporter l'historique des alertes en CSV" : "Export Alert History to CSV"}
+      >
+        {getButtonText("alerts")}
       </Button>
       <Button
         variant="outline"
         size="sm"
         onClick={() => exportToCSV("measurements")}
-        title="Export Measurement Data to CSV"
+        title={language === "fr" ? "Exporter les données de mesure en CSV" : "Export Measurement Data to CSV"}
       >
-        Export Measurements
+        {getButtonText("measurements")}
       </Button>
     </div>
   )

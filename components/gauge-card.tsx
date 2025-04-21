@@ -18,7 +18,7 @@ export function GaugeCard({ tag, value, status, timestamp, label, unit, min, max
   const percentage = Math.min(100, Math.max(0, ((value - min) / (max - min)) * 100))
 
   return (
-    <Card className={`${isAlert ? "border-red-500 dark:border-red-500" : ""} bg-white text-black`}>
+    <Card className={`${isAlert ? "border-red-500 dark:border-red-500" : ""}`}>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-medium flex justify-between items-center">
           <span>{label}</span>
@@ -32,16 +32,16 @@ export function GaugeCard({ tag, value, status, timestamp, label, unit, min, max
       <CardContent>
         <div className="text-2xl font-bold mb-2 flex items-end">
           {value.toFixed(2)}
-          <span className="text-sm text-gray-500 ml-1">{unit}</span>
+          <span className="text-sm text-muted-foreground ml-1">{unit}</span>
         </div>
 
         <Progress
           value={percentage}
-          className={`h-2 ${isAlert ? "bg-red-200" : "bg-gray-200"}`}
+          className={isAlert ? "bg-red-200 dark:bg-red-900/30" : "bg-gray-200 dark:bg-gray-800"}
           indicatorClassName={isAlert ? "bg-red-500" : "bg-green-500"}
         />
 
-        <div className="flex justify-between text-xs text-gray-500 mt-1">
+        <div className="flex justify-between text-xs text-muted-foreground mt-1">
           <span>
             {min} {unit}
           </span>
@@ -50,7 +50,7 @@ export function GaugeCard({ tag, value, status, timestamp, label, unit, min, max
           </span>
         </div>
 
-        <div className="mt-2 text-xs text-gray-500">
+        <div className="mt-2 text-xs text-muted-foreground">
           <div className="flex justify-between">
             <span>Status: {status}</span>
             <span>ID: {tag}</span>

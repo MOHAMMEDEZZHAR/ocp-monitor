@@ -106,12 +106,12 @@ export function AlertTable({ alertHistory, tagDescriptions }: AlertTableProps) {
     filteredAlerts.forEach((alert) => {
       const tagInfo = tagDescriptions[alert.tag] || { label: "Unknown", unit: "" }
       const row = [
-        format(new Date(alert.historyTimestamp), "yyyy-MM-dd HH:mm:ss"),
-        alert.tag,
-        tagInfo.label,
-        alert.valeur.toFixed(2),
-        tagInfo.unit,
-        alert.statut,
+        `"${format(new Date(alert.historyTimestamp), "yyyy-MM-dd HH:mm:ss")}"`,
+        `"${alert.tag}"`,
+        `"${tagInfo.label}"`,
+        `"${alert.valeur.toFixed(2)}"`,
+        `"${tagInfo.unit}"`,
+        `"${alert.statut}"`,
       ]
       csvRows.push(row.join(","))
     })
@@ -164,7 +164,7 @@ export function AlertTable({ alertHistory, tagDescriptions }: AlertTableProps) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Tags</SelectItem>
-                  {uniqueTags.map((tag) => (
+                  {Object.keys(tagDescriptions).map((tag) => (
                     <SelectItem key={tag} value={tag}>
                       {tagDescriptions[tag]?.label || tag}
                     </SelectItem>

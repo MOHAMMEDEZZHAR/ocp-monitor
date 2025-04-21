@@ -10,14 +10,15 @@ import { defaultThresholds } from "@/config/thresholds"
 
 interface GraphsSectionProps {
   historicalData: any[]
+  isDarkMode: boolean
 }
 
-export function GraphsSection({ historicalData }: GraphsSectionProps) {
+export function GraphsSection({ historicalData, isDarkMode }: GraphsSectionProps) {
   const [activeTag, setActiveTag] = useState("Tag_1001")
 
   // Process data for the selected tag
   const chartData = historicalData.map((item) => {
-    const tagData = item.donnees.find((d: any) => d.tag === activeTag)
+    const tagData = item.donnees?.find((d: any) => d.tag === activeTag)
     return {
       timestamp: new Date(item.timestamp).toLocaleTimeString(),
       value: tagData?.valeur || 0,
@@ -36,19 +37,15 @@ export function GraphsSection({ historicalData }: GraphsSectionProps) {
   })
 
   return (
-    <Card className="h-full bg-white text-black">
+    <Card className="h-full">
       <CardHeader className="pb-2">
         <CardTitle>Historical Trends</CardTitle>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="Tag_1001" onValueChange={setActiveTag}>
-          <TabsList className="grid grid-cols-4 md:grid-cols-7 mb-4 bg-gray-100">
+          <TabsList className="grid grid-cols-4 md:grid-cols-7 mb-4">
             {Object.keys(tagDescriptions).map((tag) => (
-              <TabsTrigger
-                key={tag}
-                value={tag}
-                className="text-xs data-[state=active]:bg-white data-[state=active]:text-black"
-              >
+              <TabsTrigger key={tag} value={tag} className="text-xs">
                 {tagDescriptions[tag].label.split(" ")[0]}
               </TabsTrigger>
             ))}
@@ -60,26 +57,30 @@ export function GraphsSection({ historicalData }: GraphsSectionProps) {
                 config={{
                   value: {
                     label: tagDescriptions[tag].label,
-                    color: "hsl(var(--chart-1))",
+                    color: isDarkMode ? "hsl(var(--chart-1))" : "hsl(var(--chart-1))",
                   },
                 }}
               >
                 <LineChart data={chartData} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke={isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}
+                  />
                   <XAxis
                     dataKey="timestamp"
                     tickMargin={10}
                     tickFormatter={(value) => value.split(":").slice(0, 2).join(":")}
-                    stroke="#333"
+                    stroke={isDarkMode ? "#aaa" : "#333"}
                   />
                   <YAxis
                     label={{
                       value: tagDescriptions[tag].unit,
                       angle: -90,
                       position: "insideLeft",
-                      style: { textAnchor: "middle", fill: "#333" },
+                      style: { textAnchor: "middle", fill: isDarkMode ? "#aaa" : "#333" },
                     }}
-                    stroke="#333"
+                    stroke={isDarkMode ? "#aaa" : "#333"}
                   />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Line

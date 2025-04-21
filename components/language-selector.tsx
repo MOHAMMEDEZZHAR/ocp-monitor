@@ -1,9 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Globe } from "lucide-react"
-import { saveLanguage, loadLanguage } from "@/utils/storage"
+import { saveLanguage } from "@/utils/storage"
 
 interface Language {
   code: string
@@ -17,23 +16,21 @@ const languages: Language[] = [
   { code: "de", name: "Deutsch" },
 ]
 
-export function LanguageSelector() {
-  const [language, setLanguage] = useState("en")
+interface LanguageSelectorProps {
+  currentLanguage: string
+  onLanguageChange: (language: string) => void
+}
 
-  useEffect(() => {
-    const savedLanguage = loadLanguage()
-    setLanguage(savedLanguage)
-  }, [])
-
+export function LanguageSelector({ currentLanguage, onLanguageChange }: LanguageSelectorProps) {
   const handleLanguageChange = (value: string) => {
-    setLanguage(value)
+    onLanguageChange(value)
     saveLanguage(value)
   }
 
   return (
     <div className="flex items-center gap-2">
       <Globe className="h-4 w-4 text-muted-foreground" />
-      <Select value={language} onValueChange={handleLanguageChange}>
+      <Select value={currentLanguage} onValueChange={handleLanguageChange}>
         <SelectTrigger className="h-8 w-[110px]">
           <SelectValue placeholder="Language" />
         </SelectTrigger>

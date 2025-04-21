@@ -16,6 +16,6 @@ export const checkThresholds = (data: any) => {
   return data.donnees.filter(
     (item: any) =>
       thresholds[item.tag] &&
-      (item.valeur < thresholds[item.tag].min || item.valeur > thresholds[item.tag].max || item.statut !== "OK"),
+      (item.valeur < thresholds[item.tag].min || item.valeur > thresholds[item.tag].max || item.statut === "OFF"),
   )
 }

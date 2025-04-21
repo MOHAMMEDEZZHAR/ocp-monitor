@@ -26,9 +26,19 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
     setError(null)
 
     try {
-      const ws = new WebSocket("ws://localhost:1880/ws/historique")
+      console.log("Connecting to WebSocket for historical data...")
+      const ws = new WebSocket("ws://localhost:1880/ws/change")
+
+      // Set a timeout for the connection
+      const connectionTimeout = setTimeout(() => {
+        console.log("WebSocket connection timeout")
+        ws.close()
+        setError("Connection timeout. Server might be unavailable.")
+        setIsLoading(false)
+      }, 5000)
 
       ws.onopen = () => {
+        clearTimeout(connectionTimeout)
         console.log("WebSocket connected for historical data")
         // Request historical data
         ws.send(JSON.stringify({ type: "get_history" }))
@@ -36,22 +46,31 @@ export function HistoryProvider({ children }: { children: ReactNode }) {
 
       ws.onmessage = (event) => {
         try {
+          console.log("Received historical data from WebSocket")
           const parsedData = JSON.parse(event.data)
           setHistoricalData(parsedData)
           setIsLoading(false)
+          ws.close()
         } catch (error) {
           console.error("Error parsing WebSocket historical data:", error)
           setError("Failed to parse historical data")
           setIsLoading(false)
+          ws.close()
         }
       }
 
-      ws.onclose = () => {
-        console.log("WebSocket for historical data closed")
+      ws.onclose = (event) => {
+        clearTimeout(connectionTimeout)
+        console.log("WebSocket for historical data closed:", event.code, event.reason)
+        if (isLoading && !event.wasClean) {
+          setError(`Connection closed unexpectedly: ${event.code}`)
+          setIsLoading(false)
+        }
       }
 
-      ws.onerror = (error) => {
-        console.error("WebSocket error for historical data:", error)
+      ws.onerror = () => {
+        clearTimeout(connectionTimeout)
+        console.error("WebSocket error for historical data")
         setError("Failed to connect to historical data service")
         setIsLoading(false)
         ws.close()
