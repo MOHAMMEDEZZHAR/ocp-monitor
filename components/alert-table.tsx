@@ -25,11 +25,9 @@ export function AlertTable({ alertHistory, tagDescriptions }: AlertTableProps) {
     direction: "desc",
   })
 
-  // Apply filters and sorting when dependencies change
   useEffect(() => {
     let result = [...alertHistory]
 
-    // Apply tag filter
     if (filterTag !== "all") {
       result = result.filter((alert) => alert.tag === filterTag)
     }
@@ -39,7 +37,6 @@ export function AlertTable({ alertHistory, tagDescriptions }: AlertTableProps) {
       result = result.filter((alert) => alert.statut === filterStatus)
     }
 
-    // Apply search term
     if (searchTerm) {
       const term = searchTerm.toLowerCase()
       result = result.filter(
@@ -50,7 +47,6 @@ export function AlertTable({ alertHistory, tagDescriptions }: AlertTableProps) {
       )
     }
 
-    // Apply sorting
     result.sort((a, b) => {
       let valueA, valueB
 
@@ -86,11 +82,8 @@ export function AlertTable({ alertHistory, tagDescriptions }: AlertTableProps) {
     setFilteredAlerts(result)
   }, [alertHistory, searchTerm, filterTag, filterStatus, sortBy])
 
-  // Get unique tags and statuses for filters
-  const uniqueTags = Array.from(new Set(alertHistory.map((alert) => alert.tag)))
   const uniqueStatuses = Array.from(new Set(alertHistory.map((alert) => alert.statut)))
 
-  // Handle sort click
   const handleSort = (field: string) => {
     setSortBy((prev) => ({
       field,
@@ -98,25 +91,25 @@ export function AlertTable({ alertHistory, tagDescriptions }: AlertTableProps) {
     }))
   }
 
-  // Export to CSV
+  // ✅ Export CSV compatible Excel FR
   const exportToCSV = () => {
     const headers = ["Timestamp", "Tag", "Label", "Value", "Unit", "Status"]
-    const csvRows = [headers.join(",")]
+    const csvRows = [headers.join(";")]
 
     filteredAlerts.forEach((alert) => {
       const tagInfo = tagDescriptions[alert.tag] || { label: "Unknown", unit: "" }
       const row = [
-        `"${format(new Date(alert.historyTimestamp), "yyyy-MM-dd HH:mm:ss")}"`,
-        `"${alert.tag}"`,
-        `"${tagInfo.label}"`,
-        `"${alert.valeur.toFixed(2)}"`,
-        `"${tagInfo.unit}"`,
-        `"${alert.statut}"`,
+        format(new Date(alert.historyTimestamp), "yyyy-MM-dd HH:mm:ss"),
+        alert.tag,
+        tagInfo.label,
+        alert.valeur.toFixed(2),
+        tagInfo.unit,
+        alert.statut,
       ]
-      csvRows.push(row.join(","))
+      csvRows.push(row.join(";"))
     })
 
-    const csvContent = csvRows.join("\n")
+    const csvContent = "\uFEFF" + csvRows.join("\n")
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
     const url = URL.createObjectURL(blob)
     const link = document.createElement("a")
@@ -177,8 +170,7 @@ export function AlertTable({ alertHistory, tagDescriptions }: AlertTableProps) {
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="OK">OK</SelectItem>
+                
                   <SelectItem value="OFF">OFF</SelectItem>
                   {uniqueStatuses
                     .filter((status) => status !== "OK" && status !== "OFF")

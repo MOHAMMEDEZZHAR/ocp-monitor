@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
@@ -15,8 +15,15 @@ interface GraphsSectionProps {
 
 export function GraphsSection({ historicalData, isDarkMode }: GraphsSectionProps) {
   const [activeTag, setActiveTag] = useState("Tag_1001")
+  const [thresholdsList, setThresholdsList] = useState(defaultThresholds)
 
-  // Process data for the selected tag
+  // Charger les seuils dans un useEffect
+  useEffect(() => {
+    const thresholds = loadThresholds() || defaultThresholds
+    setThresholdsList(thresholds)
+  }, [])
+
+  // Traiter les données pour le tag sélectionné
   const chartData = historicalData.map((item) => {
     const tagData = item.donnees?.find((d: any) => d.tag === activeTag)
     return {
@@ -25,10 +32,8 @@ export function GraphsSection({ historicalData, isDarkMode }: GraphsSectionProps
     }
   })
 
-  // Get tag descriptions from thresholds
-  const thresholdsList = loadThresholds() || defaultThresholds
+  // Créer les descriptions des tags à partir des seuils
   const tagDescriptions: Record<string, { label: string; unit: string }> = {}
-
   thresholdsList.forEach((item) => {
     tagDescriptions[item.tag] = {
       label: item.label,

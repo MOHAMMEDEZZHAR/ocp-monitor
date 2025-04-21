@@ -22,11 +22,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { defaultThresholds } from "@/config/thresholds"
 import { Sun, Moon, Eye, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
-// Update the Dashboard component to use the configurable dashboard
-// Add the import for DashboardConfig
 import { DashboardConfig, type DashboardConfig as DashboardConfigType } from "@/components/dashboard-config"
 import { DataExport } from "@/components/data-export"
-// Ajouter l'import pour useHistory
 import { useHistory } from "@/services/history-service"
 
 export function Dashboard() {
@@ -38,8 +35,8 @@ export function Dashboard() {
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
   const [language, setLanguage] = useState("en")
+  const [thresholdsList, setThresholdsList] = useState(defaultThresholds) // Ajouter un état pour thresholdsList
 
-  // Add dashboardConfig state
   const [dashboardConfig, setDashboardConfig] = useState<DashboardConfigType>({
     showGauges: true,
     showGraphs: true,
@@ -52,10 +49,15 @@ export function Dashboard() {
     componentOrder: ["gauges", "graphs", "alerts", "summary"],
   })
 
-  // Dans le composant Dashboard, ajouter:
   const { historicalData: serverHistoricalData, isLoading: isHistoryLoading } = useHistory()
 
-  // Load alert history, dark mode, and language on component mount
+  // Charger les seuils dans un useEffect
+  useEffect(() => {
+    const thresholds = loadThresholds() || defaultThresholds
+    setThresholdsList(thresholds)
+  }, [])
+
+  // Charger l'historique des alertes, le mode sombre et la langue au montage
   useEffect(() => {
     const history = loadAlertHistory()
     setAlertHistory(history)
@@ -72,7 +74,7 @@ export function Dashboard() {
     setLanguage(savedLanguage)
   }, [])
 
-  // Toggle dark mode
+  // Basculer le mode sombre
   const toggleDarkMode = () => {
     const newMode = !isDarkMode
     setIsDarkMode(newMode)
@@ -85,12 +87,12 @@ export function Dashboard() {
     }
   }
 
-  // Set language
+  // Définir la langue
   useEffect(() => {
     saveLanguage(language)
   }, [language])
 
-  // Toggle component visibility in edit mode
+  // Basculer la visibilité des composants en mode édition
   const toggleComponentVisibility = (
     component: keyof Pick<DashboardConfigType, "showGauges" | "showGraphs" | "showAlerts" | "showSummary">,
   ) => {
@@ -102,24 +104,20 @@ export function Dashboard() {
         [component]: !prev[component],
       }
 
-      // Save to localStorage
       localStorage.setItem("dashboard-config", JSON.stringify(newConfig))
-
       return newConfig
     })
   }
 
-  // Process data when it arrives
+  // Traiter les données lorsqu'elles arrivent
   useEffect(() => {
     if (!data) return
 
-    // Check for alerts and update status
     const updatedData = { ...data }
     if (updatedData.donnees && Array.isArray(updatedData.donnees)) {
       updatedData.donnees = updatedData.donnees.map((item: any) => {
         const tagInfo = thresholdsList.find((t: { tag: any }) => t.tag === item.tag)
         if (tagInfo) {
-          // Mettre à jour le statut en fonction des seuils
           if (item.valeur < tagInfo.min || item.valeur > tagInfo.max) {
             return { ...item, statut: "OFF" }
           }
@@ -128,22 +126,18 @@ export function Dashboard() {
       })
     }
 
-    // Check for alerts with updated data
     const currentAlerts = checkThresholds(updatedData)
     setAlerts(currentAlerts)
 
-    // Add to historical data (limited to last 50 points)
     setHistoricalData((prev) => {
       const newData = [...prev, { timestamp: new Date(), ...updatedData }]
       return newData.slice(-50)
     })
 
-    // Modifier useEffect pour utiliser les données historiques du serveur si disponibles
     if (serverHistoricalData && serverHistoricalData.length > 0) {
       setHistoricalData(serverHistoricalData)
     }
 
-    // Track new alerts for history
     const newAlerts: any[] = []
     const newPreviousAlerts: Record<string, boolean> = {}
 
@@ -151,7 +145,6 @@ export function Dashboard() {
       const alertKey = `${alert.tag}-${alert.valeur.toFixed(2)}`
       newPreviousAlerts[alertKey] = true
 
-      // Only add to history if this is a new alert
       if (!previousAlertsRef.current[alertKey]) {
         newAlerts.push({
           ...alert,
@@ -160,12 +153,9 @@ export function Dashboard() {
       }
     })
 
-    // Update the ref without causing re-renders
     previousAlertsRef.current = newPreviousAlerts
 
-    // Only update alert history if there are new alerts
     if (newAlerts.length > 0) {
-      // Add all new alerts to history at once
       let updatedHistory = [...alertHistory]
 
       newAlerts.forEach((alert) => {
@@ -176,25 +166,19 @@ export function Dashboard() {
         updatedHistory.unshift(alertWithId)
       })
 
-      // Keep only the last 100 alerts
       updatedHistory = updatedHistory.slice(0, 100)
-
-      // Update state and localStorage
       setAlertHistory(updatedHistory)
 
-      // Save to localStorage outside of the render cycle
       try {
         localStorage.setItem("opcua-alert-history", JSON.stringify(updatedHistory))
       } catch (error) {
         console.error("Error saving alert history:", error)
       }
     }
-  }, [data, serverHistoricalData]) // Only depend on data, not on alertHistory or previousAlerts
+  }, [data, serverHistoricalData, thresholdsList]) // Ajouter thresholdsList comme dépendance
 
-  // Get tag descriptions from thresholds
-  const thresholdsList = loadThresholds() || defaultThresholds
+  // Créer les descriptions des tags à partir des seuils
   const tagDescriptions: Record<string, { label: string; unit: string; min: number; max: number }> = {}
-
   thresholdsList.forEach((item: { tag: string | number; label: any; unit: any; min: any; max: any }) => {
     tagDescriptions[item.tag] = {
       label: item.label,
@@ -204,7 +188,7 @@ export function Dashboard() {
     }
   })
 
-  // Render components based on order
+  // Rendre les composants en fonction de l'ordre
   const renderComponent = (componentId: string, index: number) => {
     switch (componentId) {
       case "gauges":

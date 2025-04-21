@@ -1,10 +1,12 @@
-// Add these constants at the top of the file
 const THRESHOLD_KEY = "custom_thresholds"
 const DARK_MODE_KEY = "dark_mode"
 const LANGUAGE_KEY = "language"
 
+const isBrowser = typeof window !== "undefined"
+
 // Save alerts to localStorage
 export const saveAlerts = (alerts: any[]) => {
+  if (!isBrowser) return
   try {
     localStorage.setItem("opcua-alerts", JSON.stringify(alerts))
   } catch (error) {
@@ -14,6 +16,7 @@ export const saveAlerts = (alerts: any[]) => {
 
 // Load alerts from localStorage
 export const loadAlerts = (): any[] => {
+  if (!isBrowser) return []
   try {
     const savedAlerts = localStorage.getItem("opcua-alerts")
     return savedAlerts ? JSON.parse(savedAlerts) : []
@@ -23,28 +26,22 @@ export const loadAlerts = (): any[] => {
   }
 }
 
-// Add an alert to history - NOT USED ANYMORE, logic moved to Dashboard component
+// Add an alert to history - NOT USED ANYMORE
 export const addAlertToHistory = (alert: any) => {
+  if (!isBrowser) return []
   try {
-    // Get existing alert history
     const alertHistory = loadAlertHistory()
 
-    // Add the new alert with a timestamp if it doesn't have one
     const alertWithTimestamp = {
       ...alert,
       historyTimestamp: alert.historyTimestamp || new Date().toISOString(),
-      id: `${alert.tag}-${Date.now()}`, // Add a unique ID
+      id: `${alert.tag}-${Date.now()}`,
     }
 
-    // Add to the beginning of the array (newest first)
     alertHistory.unshift(alertWithTimestamp)
-
-    // Keep only the last 100 alerts
     const trimmedHistory = alertHistory.slice(0, 100)
 
-    // Save back to localStorage
     localStorage.setItem("opcua-alert-history", JSON.stringify(trimmedHistory))
-
     return trimmedHistory
   } catch (error) {
     console.error("Error adding alert to history:", error)
@@ -54,6 +51,7 @@ export const addAlertToHistory = (alert: any) => {
 
 // Load alert history from localStorage
 export const loadAlertHistory = (): any[] => {
+  if (!isBrowser) return []
   try {
     const alertHistory = localStorage.getItem("opcua-alert-history")
     return alertHistory ? JSON.parse(alertHistory) : []
@@ -65,6 +63,7 @@ export const loadAlertHistory = (): any[] => {
 
 // Clear alert history
 export const clearAlertHistory = () => {
+  if (!isBrowser) return
   try {
     localStorage.removeItem("opcua-alert-history")
   } catch (error) {
@@ -74,6 +73,7 @@ export const clearAlertHistory = () => {
 
 // Save settings to localStorage
 export const saveSettings = (settings: any) => {
+  if (!isBrowser) return
   try {
     localStorage.setItem("opcua-settings", JSON.stringify(settings))
   } catch (error) {
@@ -83,6 +83,7 @@ export const saveSettings = (settings: any) => {
 
 // Load settings from localStorage
 export const loadSettings = (): any => {
+  if (!isBrowser) return {}
   try {
     const savedSettings = localStorage.getItem("opcua-settings")
     return savedSettings ? JSON.parse(savedSettings) : {}
@@ -92,8 +93,9 @@ export const loadSettings = (): any => {
   }
 }
 
-// Add these functions for threshold management
+// Save thresholds
 export const saveThresholds = (thresholds: any[]) => {
+  if (!isBrowser) return
   try {
     localStorage.setItem(THRESHOLD_KEY, JSON.stringify(thresholds))
   } catch (error) {
@@ -101,7 +103,9 @@ export const saveThresholds = (thresholds: any[]) => {
   }
 }
 
+// Load thresholds
 export const loadThresholds = () => {
+  if (!isBrowser) return null
   try {
     const savedThresholds = localStorage.getItem(THRESHOLD_KEY)
     return savedThresholds ? JSON.parse(savedThresholds) : null
@@ -111,8 +115,9 @@ export const loadThresholds = () => {
   }
 }
 
-// Add these functions for dark mode
+// Save dark mode
 export const saveDarkMode = (isDarkMode: boolean) => {
+  if (!isBrowser) return
   try {
     localStorage.setItem(DARK_MODE_KEY, JSON.stringify(isDarkMode))
   } catch (error) {
@@ -120,7 +125,9 @@ export const saveDarkMode = (isDarkMode: boolean) => {
   }
 }
 
+// Load dark mode
 export const loadDarkMode = () => {
+  if (!isBrowser) return false
   try {
     const savedMode = localStorage.getItem(DARK_MODE_KEY)
     return savedMode ? JSON.parse(savedMode) : false
@@ -130,8 +137,9 @@ export const loadDarkMode = () => {
   }
 }
 
-// Add these functions for language
+// Save language
 export const saveLanguage = (language: string) => {
+  if (!isBrowser) return
   try {
     localStorage.setItem(LANGUAGE_KEY, language)
   } catch (error) {
@@ -139,7 +147,9 @@ export const saveLanguage = (language: string) => {
   }
 }
 
+// Load language
 export const loadLanguage = () => {
+  if (!isBrowser) return "en"
   try {
     return localStorage.getItem(LANGUAGE_KEY) || "en"
   } catch (error) {
