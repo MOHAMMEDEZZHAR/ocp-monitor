@@ -59,7 +59,7 @@ export function GraphsSection({ historicalData, isDarkMode }: GraphsSectionProps
   })
 
   return (
-    <Card className="h-full">
+    <Card>
       <CardHeader className="pb-2">
         <CardTitle>Historical Trends</CardTitle>
       </CardHeader>
@@ -74,7 +74,7 @@ export function GraphsSection({ historicalData, isDarkMode }: GraphsSectionProps
           </TabsList>
 
           {Object.keys(tagDescriptions).map((tag) => (
-            <TabsContent key={tag} value={tag} className="h-[400px]">
+            <TabsContent key={tag} value={tag} className="h-[360px]">
               <ChartContainer
                 config={{
                   value: {

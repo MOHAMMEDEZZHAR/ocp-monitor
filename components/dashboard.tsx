@@ -51,13 +51,9 @@ export function Dashboard() {
     componentOrder: ["gauges", "graphs", "alerts", "summary"],
   }
 
-  // Initialiser avec la valeur par défaut pour éviter l'erreur d'hydratation
   const [dashboardConfig, setDashboardConfig] = useState<DashboardConfigType>(defaultDashboardConfig)
-
-  // État séparé pour gaugeColumns, initialisé après le montage
   const [gaugeColumns, setGaugeColumns] = useState<number>(defaultDashboardConfig.gaugeColumns)
 
-  // Charger la configuration depuis localStorage uniquement côté client
   useEffect(() => {
     const savedConfig = loadDashboardConfig()
     if (savedConfig) {
@@ -74,11 +70,6 @@ export function Dashboard() {
   }, [dashboardConfig])
 
   useEffect(() => {
-    const thresholds = loadThresholds() || defaultThresholds
-    setThresholdsList(thresholds)
-  }, [])
-
-  useEffect(() => {
     const history = loadAlertHistory()
     setAlertHistory(history)
 
@@ -92,6 +83,9 @@ export function Dashboard() {
 
     const savedLanguage = loadLanguage()
     setLanguage(savedLanguage)
+
+    const thresholds = loadThresholds() || defaultThresholds
+    setThresholdsList(thresholds)
   }, [])
 
   const toggleDarkMode = () => {
@@ -130,19 +124,62 @@ export function Dashboard() {
 
     const updatedData = { ...data }
     if (updatedData.donnees && Array.isArray(updatedData.donnees)) {
+      // Générer des seuils par défaut pour les tags non trouvés
+      let updatedThresholdsList = [...thresholdsList]
+      updatedData.donnees.forEach((item: any) => {
+        const existingThreshold = thresholdsList.find((t: { tag: any }) => t.tag === item.tag)
+        if (!existingThreshold) {
+          updatedThresholdsList.push({
+            tag: item.tag,
+            label: item.tag,
+            unit: "°C",
+            min: 1,
+            max: 15,
+          })
+        }
+      })
+
+      // Mettre à jour les statuts avant d'appeler checkThresholds
       updatedData.donnees = updatedData.donnees.map((item: any) => {
-        const tagInfo = thresholdsList.find((t: { tag: any }) => t.tag === item.tag)
+        const tagInfo = updatedThresholdsList.find((t: { tag: any }) => t.tag === item.tag)
         if (tagInfo) {
-          if (item.valeur < tagInfo.min || item.valeur > tagInfo.max) {
+          const value = Number(item.valeur)
+          if (isNaN(value)) {
+            console.log(`Invalid value for tag ${item.tag}: ${item.valeur}. Setting status to OFF`);
             return { ...item, statut: "OFF" }
           }
+          console.log(`Checking tag ${item.tag}: valeur=${value}, min=${tagInfo.min}, max=${tagInfo.max}`);
+          if (value < tagInfo.min || value > tagInfo.max) {
+            console.log(`Tag ${item.tag} is out of range: setting status to OFF`);
+            return { ...item, statut: "OFF" }
+          }
+          console.log(`Tag ${item.tag} is within range: setting status to OK`);
+          return { ...item, statut: "OK" }
         }
-        return item
+        console.log(`No threshold found for tag ${item.tag}: setting status to OFF`);
+        return { ...item, statut: "OFF" }
+      })
+
+      // Appeler checkThresholds pour générer les alertes
+      const currentAlerts = checkThresholds(updatedData)
+      setAlerts(currentAlerts)
+
+      // Recalculer les statuts après checkThresholds pour s'assurer qu'ils sont corrects
+      updatedData.donnees = updatedData.donnees.map((item: any) => {
+        const tagInfo = updatedThresholdsList.find((t: { tag: any }) => t.tag === item.tag)
+        if (tagInfo) {
+          const value = Number(item.valeur)
+          if (isNaN(value)) {
+            return { ...item, statut: "OFF" }
+          }
+          if (value < tagInfo.min || value > tagInfo.max) {
+            return { ...item, statut: "OFF" }
+          }
+          return { ...item, statut: "OK" }
+        }
+        return { ...item, statut: "OFF" }
       })
     }
-
-    const currentAlerts = checkThresholds(updatedData)
-    setAlerts(currentAlerts)
 
     setHistoricalData((prev) => {
       const newData = [...prev, { timestamp: new Date(), ...updatedData }]
@@ -156,7 +193,7 @@ export function Dashboard() {
     const newAlerts: any[] = []
     const newPreviousAlerts: Record<string, boolean> = {}
 
-    currentAlerts.forEach((alert: { tag: any; valeur: number }) => {
+    alerts.forEach((alert: { tag: any; valeur: number }) => {
       const alertKey = `${alert.tag}-${alert.valeur.toFixed(2)}`
       newPreviousAlerts[alertKey] = true
 
@@ -190,7 +227,7 @@ export function Dashboard() {
         console.error("Error saving alert history:", error)
       }
     }
-  }, [data, serverHistoricalData, thresholdsList])
+  }, [data, serverHistoricalData])
 
   const tagDescriptions: Record<string, { label: string; unit: string; min: number; max: number }> = {}
   thresholdsList.forEach((item: { tag: string | number; label: any; unit: any; min: any; max: any }) => {
@@ -218,18 +255,7 @@ export function Dashboard() {
                   <EyeOff className="h-4 w-4" />
                 </Button>
               )}
-              <div
-                className={`
-                  grid gap-4
-                  ${gaugeColumns === 1 ? "grid-cols-1" : ""}
-                  ${gaugeColumns === 2 ? "grid-cols-2" : ""}
-                  ${gaugeColumns === 3 ? "grid-cols-3" : ""}
-                  ${gaugeColumns === 4 ? "grid-cols-4" : ""}
-                  ${gaugeColumns === 5 ? "grid-cols-5" : ""}
-                  ${gaugeColumns === 6 ? "grid-cols-6" : ""}
-                  ${gaugeColumns === 7 ? "grid-cols-7" : ""}
-                `}
-              >
+              <div className={`grid grid-cols-${gaugeColumns} gap-4`}>
                 {data?.donnees?.map((item: any) => (
                   <GaugeCard
                     key={item.tag}
@@ -254,25 +280,11 @@ export function Dashboard() {
             </TabsList>
 
             <TabsContent value="graphs">
-              <div
-                className={`grid grid-cols-1 ${
-                  dashboardConfig.graphsPosition === "full"
-                    ? ""
-                    : dashboardConfig.layout === "compact"
-                      ? "lg:grid-cols-1"
-                      : dashboardConfig.layout === "expanded"
-                        ? "lg:grid-cols-2 xl:grid-cols-3"
-                        : "lg:grid-cols-3"
-                } gap-4`}
-              >
+              <div className="grid grid-cols-3 gap-4 min-h-[450px]">
                 {dashboardConfig.showGraphs && (
                   <div
-                    className={`relative ${
-                      dashboardConfig.graphsPosition === "left"
-                        ? "lg:col-span-2"
-                        : dashboardConfig.graphsPosition === "right"
-                          ? "lg:col-start-2 lg:col-span-2"
-                          : ""
+                    className={`relative w-full col-span-2 ${
+                      dashboardConfig.graphsPosition === "right" ? "order-last" : ""
                     }`}
                   >
                     {isEditMode && (
@@ -285,12 +297,14 @@ export function Dashboard() {
                         <EyeOff className="h-4 w-4" />
                       </Button>
                     )}
-                    <GraphsSection historicalData={historicalData} isDarkMode={isDarkMode} />
+                    <div className="w-full">
+                      <GraphsSection historicalData={historicalData} isDarkMode={isDarkMode} />
+                    </div>
                   </div>
                 )}
 
                 {dashboardConfig.showAlerts && (
-                  <div className="relative">
+                  <div className="relative w-full col-span-1">
                     {isEditMode && (
                       <Button
                         variant="ghost"
@@ -301,7 +315,9 @@ export function Dashboard() {
                         <EyeOff className="h-4 w-4" />
                       </Button>
                     )}
-                    <AlertPanel alerts={alerts} tagDescriptions={tagDescriptions} />
+                    <div className="w-full">
+                      <AlertPanel alerts={alerts} tagDescriptions={tagDescriptions} />
+                    </div>
                   </div>
                 )}
               </div>

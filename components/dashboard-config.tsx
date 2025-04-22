@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
-import { Save, X, Layout, Eye, EyeOff, Columns, Rows, Grip, AlertCircle, CheckCircle } from "lucide-react"
+import { Save, X, Layout, Eye, EyeOff, Columns, Grip, AlertCircle, CheckCircle } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { saveDashboardConfig, loadDashboardConfig } from "@/utils/storage"
 
@@ -21,9 +21,9 @@ export interface DashboardConfig {
   showGraphs: boolean
   showAlerts: boolean
   showSummary: boolean
-  layout: "default" | "compact" | "expanded"
+  layout: "default"
   gaugeColumns: number
-  graphsPosition: "left" | "right" | "full"
+  graphsPosition: "left" | "right"
   editMode: boolean
   componentOrder: string[]
 }
@@ -51,7 +51,7 @@ export function DashboardConfig({ onConfigChange, onEditModeChange }: DashboardC
   const [isOpen, setIsOpen] = useState(false)
   const [config, setConfig] = useState<DashboardConfig>(() => {
     const savedConfig = loadDashboardConfig()
-    return savedConfig || defaultConfig
+    return savedConfig ?? defaultConfig // Utilisation de ?? pour gérer le cas null/undefined
   })
   const [activeTab, setActiveTab] = useState("visibility")
   // État pour les notifications
@@ -61,7 +61,7 @@ export function DashboardConfig({ onConfigChange, onEditModeChange }: DashboardC
   useEffect(() => {
     try {
       const savedConfig = loadDashboardConfig()
-      if (savedConfig) {
+      if (savedConfig !== null) { // Vérification explicite que savedConfig n'est pas null
         setConfig(savedConfig)
         onConfigChange(savedConfig)
 
@@ -69,9 +69,15 @@ export function DashboardConfig({ onConfigChange, onEditModeChange }: DashboardC
         if (savedConfig.editMode) {
           onEditModeChange(savedConfig.editMode)
         }
+      } else {
+        // Si savedConfig est null, utiliser la configuration par défaut
+        setConfig(defaultConfig)
+        onConfigChange(defaultConfig)
       }
     } catch (error) {
       console.error("Error loading dashboard config:", error)
+      setConfig(defaultConfig)
+      onConfigChange(defaultConfig)
     }
   }, [onConfigChange, onEditModeChange])
 
@@ -300,27 +306,13 @@ export function DashboardConfig({ onConfigChange, onEditModeChange }: DashboardC
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <h3 className="text-sm font-medium">Layout Preset</h3>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 gap-2">
                       <Button
                         variant={config.layout === "default" ? "default" : "outline"}
                         className="w-full"
                         onClick={() => handleChange("layout", "default")}
                       >
                         Default
-                      </Button>
-                      <Button
-                        variant={config.layout === "compact" ? "default" : "outline"}
-                        className="w-full"
-                        onClick={() => handleChange("layout", "compact")}
-                      >
-                        Compact
-                      </Button>
-                      <Button
-                        variant={config.layout === "expanded" ? "default" : "outline"}
-                        className="w-full"
-                        onClick={() => handleChange("layout", "expanded")}
-                      >
-                        Expanded
                       </Button>
                     </div>
                   </div>
@@ -360,7 +352,7 @@ export function DashboardConfig({ onConfigChange, onEditModeChange }: DashboardC
 
                   <div className="space-y-2">
                     <h3 className="text-sm font-medium">Graphs Position</h3>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                       <Button
                         variant={config.graphsPosition === "left" ? "default" : "outline"}
                         className="w-full"
@@ -376,14 +368,6 @@ export function DashboardConfig({ onConfigChange, onEditModeChange }: DashboardC
                       >
                         <Columns className="h-4 w-4 mr-2 rotate-180" />
                         Right
-                      </Button>
-                      <Button
-                        variant={config.graphsPosition === "full" ? "default" : "outline"}
-                        className="w-full"
-                        onClick={() => handleChange("graphsPosition", "full")}
-                      >
-                        <Rows className="h-4 w-4 mr-2" />
-                        Full
                       </Button>
                     </div>
                   </div>

@@ -9,7 +9,7 @@ interface AlertPanelProps {
 
 export function AlertPanel({ alerts, tagDescriptions }: AlertPanelProps) {
   return (
-    <Card className="h-full bg-white text-black">
+    <Card>
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2">
           <AlertTriangle className="h-5 w-5 text-red-500" />
@@ -23,7 +23,12 @@ export function AlertPanel({ alerts, tagDescriptions }: AlertPanelProps) {
           ) : (
             <div className="space-y-2">
               {alerts.map((alert, index) => {
-                const tagInfo = tagDescriptions[alert.tag]
+                const tagInfo = tagDescriptions[alert.tag] || {
+                  label: alert.tag,
+                  unit: "N/A",
+                  min: 0,
+                  max: 0,
+                }
                 const alertMessage =
                   alert.valeur < tagInfo.min
                     ? `Below minimum (${tagInfo.min} ${tagInfo.unit})`
@@ -36,7 +41,9 @@ export function AlertPanel({ alerts, tagDescriptions }: AlertPanelProps) {
                       <div className="text-sm text-gray-500">
                         Current: {alert.valeur.toFixed(2)} {tagInfo.unit} - {alertMessage}
                       </div>
-                      <div className="text-xs text-gray-500 mt-1">{new Date(alert.horodatage).toLocaleString()}</div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {new Date(alert.horodatage).toLocaleString()}
+                      </div>
                     </CardContent>
                   </Card>
                 )

@@ -1,3 +1,5 @@
+import { DashboardConfig } from "@/components/dashboard-config"
+
 const THRESHOLD_KEY = "custom_thresholds"
 const DARK_MODE_KEY = "dark_mode"
 const LANGUAGE_KEY = "language"
@@ -14,17 +16,17 @@ interface Threshold {
   max: number
 }
 
-// Interface pour dashboardConfig (basée sur DashboardConfigType dans dashboard.tsx)
-interface DashboardConfig {
-  showGauges: boolean
-  showGraphs: boolean
-  showAlerts: boolean
-  showSummary: boolean
-  layout: "default" | "compact" | "expanded"
-  gaugeColumns: number
-  graphsPosition: "left" | "right" | "full"
-  editMode: boolean
-  componentOrder: string[]
+// Type temporaire pour représenter une ancienne configuration
+interface LegacyDashboardConfig {
+  showGauges?: boolean
+  showGraphs?: boolean
+  showAlerts?: boolean
+  showSummary?: boolean
+  layout?: "default" | "compact" | "expanded"
+  gaugeColumns?: number
+  graphsPosition?: "left" | "right" | "full" // Inclut les anciennes valeurs possibles
+  editMode?: boolean
+  componentOrder?: string[]
 }
 
 // Save alerts to localStorage
@@ -191,12 +193,34 @@ export const saveDashboardConfig = (config: DashboardConfig) => {
   }
 }
 
-// Load dashboard config
+// Load dashboard config with migration logic
 export const loadDashboardConfig = (): DashboardConfig | null => {
   if (!isBrowser) return null
   try {
     const savedConfig = localStorage.getItem(DASHBOARD_CONFIG_KEY)
-    return savedConfig ? JSON.parse(savedConfig) : null
+    if (!savedConfig) return null
+
+    const parsedConfig: LegacyDashboardConfig = JSON.parse(savedConfig)
+
+    // Migration logic: convert old config values to new ones
+    const migratedConfig: DashboardConfig = {
+      showGauges: parsedConfig.showGauges ?? true,
+      showGraphs: parsedConfig.showGraphs ?? true,
+      showAlerts: parsedConfig.showAlerts ?? true,
+      showSummary: parsedConfig.showSummary ?? true,
+      layout: "default", // Force to "default" since "compact" and "expanded" are removed
+      gaugeColumns: parsedConfig.gaugeColumns ?? 4,
+      graphsPosition:
+        parsedConfig.graphsPosition && ["left", "right"].includes(parsedConfig.graphsPosition)
+          ? (parsedConfig.graphsPosition as "left" | "right")
+          : "left", // Ignore "full" and use "left" as default
+      editMode: parsedConfig.editMode ?? false,
+      componentOrder: parsedConfig.componentOrder ?? ["gauges", "graphs", "alerts", "summary"],
+    }
+
+    // Save the migrated config back to localStorage
+    saveDashboardConfig(migratedConfig)
+    return migratedConfig
   } catch (error) {
     console.error("Error loading dashboard config from localStorage:", error)
     return null
