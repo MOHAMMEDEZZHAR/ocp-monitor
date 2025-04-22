@@ -33,6 +33,7 @@ export function Dashboard() {
   const [alerts, setAlerts] = useState<any[]>([])
   const [alertHistory, setAlertHistory] = useState<any[]>([])
   const [historicalData, setHistoricalData] = useState<any[]>([])
+  const [processedData, setProcessedData] = useState<any>(null) // Nouvel état pour les données traitées
   const previousAlertsRef = useRef<Record<string, boolean>>({})
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
@@ -139,7 +140,7 @@ export function Dashboard() {
         }
       })
 
-      // Mettre à jour les statuts avant d'appeler checkThresholds
+      // Mettre à jour les statuts
       updatedData.donnees = updatedData.donnees.map((item: any) => {
         const tagInfo = updatedThresholdsList.find((t: { tag: any }) => t.tag === item.tag)
         if (tagInfo) {
@@ -164,7 +165,7 @@ export function Dashboard() {
       const currentAlerts = checkThresholds(updatedData)
       setAlerts(currentAlerts)
 
-      // Recalculer les statuts après checkThresholds pour s'assurer qu'ils sont corrects
+      // Recalculer les statuts après checkThresholds
       updatedData.donnees = updatedData.donnees.map((item: any) => {
         const tagInfo = updatedThresholdsList.find((t: { tag: any }) => t.tag === item.tag)
         if (tagInfo) {
@@ -179,6 +180,9 @@ export function Dashboard() {
         }
         return { ...item, statut: "OFF" }
       })
+
+      // Mettre à jour processedData avec les données traitées
+      setProcessedData(updatedData)
     }
 
     setHistoricalData((prev) => {
@@ -256,7 +260,7 @@ export function Dashboard() {
                 </Button>
               )}
               <div className={`grid grid-cols-${gaugeColumns} gap-4`}>
-                {data?.donnees?.map((item: any) => (
+                {processedData?.donnees?.map((item: any) => (
                   <GaugeCard
                     key={item.tag}
                     value={item.valeur}
@@ -352,18 +356,18 @@ export function Dashboard() {
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div>
                     <p className="text-sm text-muted-foreground">Total Tags</p>
-                    <p className="text-2xl font-bold">{data?.donnees?.length || 0}</p>
+                    <p className="text-2xl font-bold">{processedData?.donnees?.length || 0}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Valid</p>
                     <p className="text-2xl font-bold text-green-500">
-                      {data?.donnees?.filter((item: any) => item.statut === "OK").length || 0}
+                      {processedData?.donnees?.filter((item: any) => item.statut === "OK").length || 0}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Errors</p>
                     <p className="text-2xl font-bold text-red-500">
-                      {data?.donnees?.filter((item: any) => item.statut !== "OK").length || 0}
+                      {processedData?.donnees?.filter((item: any) => item.statut !== "OK").length || 0}
                     </p>
                   </div>
                 </div>
