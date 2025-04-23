@@ -1,7 +1,9 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, useMemo } from "react"
 import { useWebSocket } from "@/services/websocket-context"
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { Header } from "@/components/header"
 import { GaugeCard } from "@/components/gauge-card"
 import { AlertPanel } from "@/components/alert-panel"
@@ -14,8 +16,7 @@ import {
   loadThresholds,
   saveDarkMode,
   loadDarkMode,
-  loadLanguage,
-  saveLanguage,
+
   loadDashboardConfig,
   saveDashboardConfig,
 } from "@/utils/storage"
@@ -27,24 +28,31 @@ import { Button } from "@/components/ui/button"
 import { DashboardConfig, type DashboardConfig as DashboardConfigType } from "@/components/dashboard-config"
 import { DataExport } from "@/components/data-export"
 import { useHistory } from "@/services/history-service"
-
 export function Dashboard() {
-  const { data, isConnected, lastUpdate } = useWebSocket()
+  const { data: session } = useSession();
+  const router = useRouter();
+  const { data = {
+    temperature: null,
+    pressure: null,
+    humidity: null,
+    voltage: null
+  }, isConnected, lastUpdate } = useWebSocket()
+
+  // Authentication is now handled by middleware
   const [alerts, setAlerts] = useState<any[]>([])
   const [alertHistory, setAlertHistory] = useState<any[]>([])
   const [historicalData, setHistoricalData] = useState<any[]>([])
-  const [processedData, setProcessedData] = useState<any>(null) // Nouvel état pour les données traitées
+  const [processedData, setProcessedData] = useState<any>(null)
   const previousAlertsRef = useRef<Record<string, boolean>>({})
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [isEditMode, setIsEditMode] = useState(false)
-  const [language, setLanguage] = useState("en")
-  const [thresholdsList, setThresholdsList] = useState(defaultThresholds)
 
   const defaultDashboardConfig: DashboardConfigType = {
     showGauges: true,
     showGraphs: true,
     showAlerts: true,
     showSummary: true,
+    showAlertHistory: true,
     layout: "default",
     gaugeColumns: 4,
     graphsPosition: "left",
@@ -52,6 +60,7 @@ export function Dashboard() {
     componentOrder: ["gauges", "graphs", "alerts", "summary"],
   }
 
+  const [thresholdsList, setThresholdsList] = useState(defaultThresholds)
   const [dashboardConfig, setDashboardConfig] = useState<DashboardConfigType>(defaultDashboardConfig)
   const [gaugeColumns, setGaugeColumns] = useState<number>(defaultDashboardConfig.gaugeColumns)
 
@@ -82,9 +91,6 @@ export function Dashboard() {
       document.documentElement.classList.remove("dark")
     }
 
-    const savedLanguage = loadLanguage()
-    setLanguage(savedLanguage)
-
     const thresholds = loadThresholds() || defaultThresholds
     setThresholdsList(thresholds)
   }, [])
@@ -101,9 +107,18 @@ export function Dashboard() {
     }
   }
 
-  useEffect(() => {
-    saveLanguage(language)
-  }, [language])
+  const tagDescriptions = useMemo(() => {
+    const descriptions: Record<string, { label: string; unit: string; min: number; max: number }> = {}
+    thresholdsList.forEach((item: { tag: string | number; label: any; unit: any; min: any; max: any }) => {
+      descriptions[item.tag] = {
+        label: item.label,
+        unit: item.unit,
+        min: item.min,
+        max: item.max,
+      }
+    })
+    return descriptions
+  }, [thresholdsList])
 
   const toggleComponentVisibility = (
     component: keyof Pick<DashboardConfigType, "showGauges" | "showGraphs" | "showAlerts" | "showSummary">,
@@ -233,16 +248,6 @@ export function Dashboard() {
     }
   }, [data, serverHistoricalData])
 
-  const tagDescriptions: Record<string, { label: string; unit: string; min: number; max: number }> = {}
-  thresholdsList.forEach((item: { tag: string | number; label: any; unit: any; min: any; max: any }) => {
-    tagDescriptions[item.tag] = {
-      label: item.label,
-      unit: item.unit,
-      min: item.min,
-      max: item.max,
-    }
-  })
-
   const renderComponent = (componentId: string, index: number) => {
     switch (componentId) {
       case "gauges":
@@ -328,11 +333,13 @@ export function Dashboard() {
             </TabsContent>
 
             <TabsContent value="history">
+            {dashboardConfig.showAlertHistory && (
               <AlertHistory
                 alertHistory={alertHistory}
                 tagDescriptions={tagDescriptions}
                 setAlertHistory={setAlertHistory}
               />
+            )}
             </TabsContent>
           </Tabs>
         )
@@ -382,62 +389,47 @@ export function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <Header isConnected={isConnected} lastUpdate={lastUpdate} language={language} onLanguageChange={setLanguage} />
-
-      <main className="container mx-auto p-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <Header isConnected={isConnected} lastUpdate={lastUpdate} />
+      <main className="container mx-auto p-4 dark:text-gray-100">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold">
-            {language === "fr"
-              ? "Valeurs Actuelles"
-              : language === "es"
-                ? "Valores Actuales"
-                : language === "de"
-                  ? "Aktuelle Werte"
-                  : "Current Values"}
-          </h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h2>
           <div className="flex items-center gap-2">
-            {isEditMode && (
-              <div className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 text-xs px-2 py-1 rounded-md flex items-center">
-                <Eye className="h-3 w-3 mr-1" />
-                {language === "fr"
-                  ? "Mode Édition"
-                  : language === "es"
-                    ? "Modo Edición"
-                    : language === "de"
-                      ? "Bearbeitungsmodus"
-                      : "Edit Mode"}
-              </div>
-            )}
-            <DataExport
-              alertHistory={alertHistory}
-              measurementData={historicalData}
-              tagDescriptions={tagDescriptions}
-              language={language}
-            />
-            <Button variant="outline" size="icon" onClick={toggleDarkMode} className="rounded-full">
-              {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={toggleDarkMode}
+              className="hover:bg-accent hover:text-accent-foreground"
+              title={isDarkMode ? 'Light Mode' : 'Dark Mode'}
+            >
+              {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setIsEditMode(!isEditMode)}
+              className="hover:bg-accent hover:text-accent-foreground"
+              title={isEditMode ? 'View Mode' : 'Edit Mode'}
+            >
+              {isEditMode ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </Button>
           </div>
+          <DataExport
+            alertHistory={alertHistory}
+            measurementData={historicalData}
+            tagDescriptions={tagDescriptions}
+          />
         </div>
 
         {isHistoryLoading && (
           <div className="text-center py-4">
-            <p>
-              {language === "fr"
-                ? "Chargement des données historiques..."
-                : language === "es"
-                  ? "Cargando datos históricos..."
-                  : language === "de"
-                    ? "Historische Daten werden geladen..."
-                    : "Loading historical data..."}
-            </p>
+            <p>Loading historical data...</p>
           </div>
         )}
 
         {dashboardConfig.componentOrder.map((componentId, index) => renderComponent(componentId, index))}
 
-        <SettingsPanel language={language} />
+        <SettingsPanel />
         <DashboardConfig onConfigChange={setDashboardConfig} onEditModeChange={setIsEditMode} />
       </main>
     </div>

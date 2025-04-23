@@ -7,28 +7,12 @@ interface DataExportProps {
   alertHistory: any[]
   measurementData: any[]
   tagDescriptions: Record<string, { label: string; unit: string; min: number; max: number }>
-  language?: string
+
 }
 
-export function DataExport({ alertHistory, measurementData, tagDescriptions, language = "en" }: DataExportProps) {
-  const getButtonText = (type: string) => {
-    if (type === "alerts") {
-      return language === "fr"
-        ? "Exporter Alertes"
-        : language === "es"
-          ? "Exportar Alertas"
-          : language === "de"
-            ? "Alarme Exportieren"
-            : "Export Alerts"
-    } else {
-      return language === "fr"
-        ? "Exporter Mesures"
-        : language === "es"
-          ? "Exportar Mediciones"
-          : language === "de"
-            ? "Messungen Exportieren"
-            : "Export Measurements"
-    }
+export function DataExport({ alertHistory, measurementData, tagDescriptions }: DataExportProps) {
+  const getButtonText = () => {
+    return "Measurement Data"
   }
 
   const exportToCSV = (dataType: string) => {
@@ -86,18 +70,10 @@ export function DataExport({ alertHistory, measurementData, tagDescriptions, lan
       <Button
         variant="outline"
         size="sm"
-        onClick={() => exportToCSV("alerts")}
-        title={language === "fr" ? "Exporter l'historique des alertes en CSV" : "Export Alert History to CSV"}
-      >
-        {getButtonText("alerts")}
-      </Button>
-      <Button
-        variant="outline"
-        size="sm"
         onClick={() => exportToCSV("measurements")}
-        title={language === "fr" ? "Exporter les données de mesure en CSV" : "Export Measurement Data to CSV"}
+        title="Export Measurement Data to CSV"
       >
-        {getButtonText("measurements")}
+        {getButtonText()}
       </Button>
     </div>
   )

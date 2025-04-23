@@ -36,6 +36,13 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
           setLastUpdate(new Date())
         } catch (error) {
           console.error("Error parsing WebSocket data:", error)
+          // Set default data structure when parsing fails
+          setData({
+            temperature: null,
+            pressure: null,
+            humidity: null,
+            voltage: null
+          })
         }
       }
 
@@ -46,7 +53,15 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       }
 
       ws.onerror = (error) => {
-        console.error("WebSocket error:", error)
+        console.error("WebSocket error occurred")
+        setIsConnected(false)
+        // Set default data when connection fails
+        setData({
+          temperature: null,
+          pressure: null,
+          humidity: null,
+          voltage: null
+        })
         ws.close()
       }
 

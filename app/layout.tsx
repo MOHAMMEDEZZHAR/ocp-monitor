@@ -1,4 +1,7 @@
 import type { Metadata } from 'next'
+import { ThemeProvider } from "@/components/theme-provider"
+import { ThresholdProvider } from "@/contexts/ThresholdContext"
+import AuthProvider from "@/components/session-provider"
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -14,7 +17,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <AuthProvider>
+          <ThemeProvider defaultTheme="system">
+            <ThresholdProvider>
+              {children}
+            </ThresholdProvider>
+          </ThemeProvider>
+        </AuthProvider>
+      </body>
     </html>
   )
 }

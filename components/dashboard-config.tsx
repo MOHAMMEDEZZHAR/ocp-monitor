@@ -21,6 +21,7 @@ export interface DashboardConfig {
   showGraphs: boolean
   showAlerts: boolean
   showSummary: boolean
+  showAlertHistory: boolean
   layout: "default"
   gaugeColumns: number
   graphsPosition: "left" | "right"
@@ -33,6 +34,7 @@ const defaultConfig: DashboardConfig = {
   showGraphs: true,
   showAlerts: true,
   showSummary: true,
+  showAlertHistory: true,
   layout: "default",
   gaugeColumns: 4,
   graphsPosition: "left",
@@ -292,6 +294,22 @@ export function DashboardConfig({ onConfigChange, onEditModeChange }: DashboardC
                           <Label htmlFor="show-summary">Summary</Label>
                         </div>
                         {config.showSummary ? (
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="show-alert-history"
+                            checked={config.showAlertHistory}
+                            onCheckedChange={(checked) => handleChange("showAlertHistory", !!checked)}
+                          />
+                          <Label htmlFor="show-alert-history">Alert History</Label>
+                        </div>
+                        {config.showAlertHistory ? (
                           <Eye className="h-4 w-4 text-muted-foreground" />
                         ) : (
                           <EyeOff className="h-4 w-4 text-muted-foreground" />
