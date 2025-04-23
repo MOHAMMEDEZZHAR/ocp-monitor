@@ -17,6 +17,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="icon" href="/OIP.jpeg" type="image/jpeg" />
+      </head>
       <body>
         <AuthProvider>
           <ThemeProvider defaultTheme="system">
