@@ -2,6 +2,7 @@ import { getConnection } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../auth/auth.config";
+import bcrypt from "bcrypt";
 
 // Get all users (admin only)
 export async function GET() {
@@ -53,10 +54,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `This ${field} is already in use` }, { status: 400 });
     }
 
-    // Create the user
+    // Hash the password before storing it
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    // Create the user with hashed password
     await conn.execute(
       'INSERT INTO users (username, password, email, role, is_active) VALUES (?, ?, ?, ?, TRUE)',
-      [username, password, email, role]
+      [username, hashedPassword, email, role]
     );
     await conn.end();
 
