@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { ThemeProvider } from "@/components/theme-provider"
 import { ThresholdProvider } from "@/contexts/ThresholdContext"
+import { GaugeStyleProvider } from "@/contexts/GaugeStyleContext"
 import AuthProvider from "@/components/session-provider"
 import './globals.css'
 
@@ -24,7 +25,9 @@ export default function RootLayout({
         <AuthProvider>
           <ThemeProvider defaultTheme="system">
             <ThresholdProvider>
-              {children}
+              <GaugeStyleProvider>
+                {children}
+              </GaugeStyleProvider>
             </ThresholdProvider>
           </ThemeProvider>
         </AuthProvider>

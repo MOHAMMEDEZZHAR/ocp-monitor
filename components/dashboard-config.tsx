@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Save, X, Layout, Eye, EyeOff, Columns, Grip, AlertCircle, CheckCircle } from "lucide-react"
 import { Switch } from "@/components/ui/switch"
 import { saveDashboardConfig, loadDashboardConfig } from "@/utils/storage"
+import { useGaugeStyle } from "@/contexts/GaugeStyleContext"
 
 interface DashboardConfigProps {
   onConfigChange: (config: DashboardConfig) => void
@@ -58,6 +59,7 @@ export function DashboardConfig({ onConfigChange, onEditModeChange }: DashboardC
   const [activeTab, setActiveTab] = useState("visibility")
   // État pour les notifications
   const [notification, setNotification] = useState<Notification | null>(null)
+  const { gaugeStyle, setGaugeStyle } = useGaugeStyle()
 
   // Load config from localStorage on component mount
   useEffect(() => {
@@ -315,6 +317,26 @@ export function DashboardConfig({ onConfigChange, onEditModeChange }: DashboardC
                           <EyeOff className="h-4 w-4 text-muted-foreground" />
                         )}
                       </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Style des jauges</Label>
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant={gaugeStyle === 'classic' ? 'default' : 'outline'}
+                        onClick={() => setGaugeStyle('classic')}
+                        size="sm"
+                      >
+                        Classique
+                      </Button>
+                      <Button
+                        variant={gaugeStyle === 'modern' ? 'default' : 'outline'}
+                        onClick={() => setGaugeStyle('modern')}
+                        size="sm"
+                      >
+                        Moderne
+                      </Button>
                     </div>
                   </div>
                 </div>
