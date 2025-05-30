@@ -1,0 +1,237 @@
+[
+    {
+        "id": "74b5452b4da6cd1c",
+        "type": "OpcUa-Client",
+        "z": "4d956952bcbf8c6d",
+        "endpoint": "f671ad01c4716bf6",
+        "action": "read",
+        "deadbandtype": "a",
+        "deadbandvalue": 1,
+        "time": 10,
+        "timeUnit": "s",
+        "certificate": "n",
+        "localfile": "",
+        "localkeyfile": "",
+        "securitymode": "None",
+        "securitypolicy": "None",
+        "useTransport": false,
+        "maxChunkCount": 1,
+        "maxMessageSize": 8192,
+        "receiveBufferSize": 8192,
+        "sendBufferSize": 8192,
+        "setstatusandtime": false,
+        "keepsessionalive": false,
+        "name": "",
+        "x": 460,
+        "y": 320,
+        "wires": [
+            [
+                "abc123formatter"
+            ],
+            [],
+            []
+        ]
+    },
+    {
+        "id": "d62afbd9b4b81762",
+        "type": "function",
+        "z": "4d956952bcbf8c6d",
+        "name": "function 1",
+        "func": "const nodes = [\n    { nodeId: 'ns=3;i=1001', datatype: 'Int32' },\n    { nodeId: 'ns=3;i=1002', datatype: 'Double' },\n    { nodeId: 'ns=3;i=1003', datatype: 'Double' },\n    { nodeId: 'ns=3;i=1004', datatype: 'Double' },\n    { nodeId: 'ns=3;i=1005', datatype: 'Double' },\n    { nodeId: 'ns=3;i=1006', datatype: 'Double' },\n    { nodeId: 'ns=3;i=1007', datatype: 'Double' }\n];\n\n// Initialize or get the current index\nif (!flow.get('currentIndex')) {\n    flow.set('currentIndex', 0);\n}\n\nconst index = flow.get('currentIndex');\nconst currentNode = nodes[index];\n\n// Prepare message for OPC UA node\nmsg.payload = {\n    nodeId: currentNode.nodeId,\n    datatype: currentNode.datatype\n};\n\n// Set topic if required by OPC UA node\nmsg.topic = currentNode.nodeId;\n\n// Update index for next run\nif (index < nodes.length - 1) {\n    flow.set('currentIndex', index + 1);\n} else {\n    flow.set('currentIndex', 0); // Reset when done\n}\n\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 300,
+        "y": 320,
+        "wires": [
+            [
+                "74b5452b4da6cd1c"
+            ]
+        ]
+    },
+    {
+        "id": "inject-node",
+        "type": "inject",
+        "z": "4d956952bcbf8c6d",
+        "name": "Trigger Read (Interval)",
+        "props": [],
+        "repeat": "1",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 110,
+        "y": 320,
+        "wires": [
+            [
+                "d62afbd9b4b81762"
+            ]
+        ]
+    },
+    {
+        "id": "abc123formatter",
+        "type": "function",
+        "z": "4d956952bcbf8c6d",
+        "name": "Formater les résultats OPC",
+        "func": "// Input: Single OPC UA reading (msg.payload = number, msg.topic = nodeId)\n// Example: { payload: 25, topic: 'ns=3;i=1001' }\n\n// 1. Create a standardized object for the current reading\nconst formattedResult = {\n    tag: msg.topic.replace('ns=3;i=', 'Tag_'),\n    valeur: msg.payload,\n    horodatage: new Date().toISOString(),\n    statut: (typeof msg.payload === 'number') ? 'OK' : 'ERREUR'\n};\n\n// 2. Store in flow context to accumulate readings\nif (!flow.get('opcResults')) {\n    flow.set('opcResults', []); // Initialize array\n}\n\nconst results = flow.get('opcResults');\nresults.push(formattedResult);\n\n// 3. Only output when all nodes are read (assuming 7 nodes)\nif (results.length >= 7) {\n    // Build final payload\n    msg.payload = {\n        donnees: results,\n        resume: {\n            total: results.length,\n            valide: results.filter(r => r.statut === 'OK').length,\n            erreur: results.filter(r => r.statut === 'ERREUR').length\n        }\n    };\n    \n    // Reset for next cycle\n    flow.set('opcResults', []);\n    \n    // Optional: Add metadata\n    msg.topic = 'opc_batch_results';\n    return msg;\n} else {\n    return null; // Skip output until all nodes are read\n}",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 720,
+        "y": 320,
+        "wires": [
+            [
+                "threshold_check_node",
+                "453df971fe911756"
+            ]
+        ]
+    },
+    {
+        "id": "threshold_check_node",
+        "type": "function",
+        "z": "4d956952bcbf8c6d",
+        "name": "Vérifier seuils",
+        "func": "// Entrée attendue : msg.payload = { donnees: [...], resume: {...} }\n// Seuils par défaut\nconst defaultThresholds = {\n    \"Tag_1001\": { min: 0, max: 15 },\n    // Ajoutez d'autres seuils si nécessaire\n};\n\n// Seuils dynamiques depuis le contexte global\nconst dynamicThresholds = global.get(\"dynamic_thresholds\") || {};\nconst thresholds = { ...defaultThresholds, ...dynamicThresholds };\n\nlet alerts = [];\n\nmsg.payload.donnees.forEach(item => {\n    const threshold = thresholds[item.tag];\n\n    if (threshold) {\n        const value = item.valeur;\n        const { min, max } = threshold;\n\n        if (value < min || value > max) {\n            const limitHit = value < min ? min : max;\n            const direction = value < min ? \"en dessous du minimum\" : \"au-dessus du maximum\";\n\n            const alertText = `⚠️ ALERTE: ${item.tag} = ${value} (${direction} ${limitHit}) à ${new Date(item.horodatage).toLocaleString()}`;\n\n            const alertMsg = {\n                ...msg,\n                payload: alertText,\n                topic: `ALERTE: ${item.tag} hors seuil`\n            };\n\n            alerts.push(alertMsg);\n        }\n    }\n});\n\n// Sorties : [0] = alertes, [1] = WebSocket\n\nif (alerts.length > 0) {\n    return [alerts, null];  // Toutes les alertes envoyées sur la 1ère sortie\n} else {\n    return [null, msg];     // Sinon, envoie les données normales au frontend\n}\n",
+        "outputs": 2,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 980,
+        "y": 360,
+        "wires": [
+            [
+                "509cf23eb56466e0"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "c63d3dbcda4d92bc",
+        "type": "e-mail",
+        "z": "4d956952bcbf8c6d",
+        "server": "smtp.gmail.com",
+        "port": "465",
+        "authtype": "BASIC",
+        "saslformat": true,
+        "token": "oauth2Response.access_token",
+        "secure": true,
+        "tls": true,
+        "name": "khalilkml123@gmail.com",
+        "dname": "",
+        "x": 1270,
+        "y": 380,
+        "wires": []
+    },
+    {
+        "id": "1f871e17dbd59831",
+        "type": "twilio out",
+        "z": "4d956952bcbf8c6d",
+        "twilio": "ca735aa643bcf6da",
+        "twilioType": "sms",
+        "url": "",
+        "number": "+212648511846",
+        "name": "Admin",
+        "x": 1210,
+        "y": 340,
+        "wires": []
+    },
+    {
+        "id": "453df971fe911756",
+        "type": "websocket out",
+        "z": "4d956952bcbf8c6d",
+        "name": "",
+        "server": "2a843ca9f5dd5af9",
+        "client": "",
+        "x": 980,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "509cf23eb56466e0",
+        "type": "debug",
+        "z": "4d956952bcbf8c6d",
+        "name": "debug 1",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 1220,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "7759496040cc58e5",
+        "type": "websocket in",
+        "z": "4d956952bcbf8c6d",
+        "name": "change",
+        "server": "a7ed4840a1aa21c0",
+        "client": "",
+        "x": 730,
+        "y": 540,
+        "wires": [
+            [
+                "function_update_thresholds"
+            ]
+        ]
+    },
+    {
+        "id": "function_update_thresholds",
+        "type": "function",
+        "z": "4d956952bcbf8c6d",
+        "name": "Mettre à jour seuils globaux",
+        "func": "// Original check:\n// if (msg.payload && typeof msg.payload === 'object')\n\n// Modified check:\nif (msg.payload && typeof msg.payload === 'object' && msg.payload.Tag_1001) {\n    global.set(\"dynamic_thresholds\", msg.payload);\n    node.status({fill:\"green\",shape:\"dot\",text:\"seuils mis à jour\"});\n} else if (msg.type === \"update_thresholds\" && msg.payload && typeof msg.payload === \"object\") {\n    // Handle the structure you're actually sending\n    global.set(\"dynamic_thresholds\", msg.payload);\n    node.status({fill:\"green\",shape:\"dot\",text:\"seuils mis à jour\"});\n} else {\n    node.status({fill:\"red\",shape:\"ring\",text:\"format invalide: \" + JSON.stringify(msg)});\n}",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 1040,
+        "y": 540,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "f671ad01c4716bf6",
+        "type": "OpcUa-Endpoint",
+        "endpoint": "opc.tcp://Mohammed_EZZHAR:53530/OPCUA/SimulationServer",
+        "secpol": "None",
+        "secmode": "None",
+        "none": true,
+        "login": false,
+        "usercert": false,
+        "usercertificate": "",
+        "userprivatekey": ""
+    },
+    {
+        "id": "ca735aa643bcf6da",
+        "type": "twilio-api",
+        "name": "Test",
+        "sid": "AC33ad07935c2f3d28c879e27240da58eb",
+        "from": "+18083534871"
+    },
+    {
+        "id": "2a843ca9f5dd5af9",
+        "type": "websocket-listener",
+        "path": "/ws/opcua",
+        "wholemsg": "false"
+    },
+    {
+        "id": "a7ed4840a1aa21c0",
+        "type": "websocket-listener",
+        "path": "/ws/change",
+        "wholemsg": "true"
+    }
+]
