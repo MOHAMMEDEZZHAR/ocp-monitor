@@ -1,6 +1,9 @@
 # 🖥️ Supervision des Données en Temps Réel
 
 Ce projet a pour objectif de mettre en place une application de supervision en temps réel des données industrielles provenant d’un serveur OPC UA, en utilisant **Node-RED** pour la collecte et le traitement, et **React** pour l’interface utilisateur.
+# Note importante :
+Si vous voulez tester l’application, veuillez télécharger le projet à partir du commit 11.
+Après le commit 11, je travaille sur de nouvelles fonctionnalités avancées qui ne sont pas encore terminées.
 
 ## 🔧 Technologies utilisées
 
